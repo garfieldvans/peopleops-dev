@@ -80,7 +80,8 @@ Exit criteria: an employee can exist without an account and get one later; sensi
 are hidden from managers without permission (verified via API); no history rows are overwritten.
 
 Result: met. `apps/api/test/employees.e2e-spec.ts` passes 7/7 alongside the auth suite (14/14 total);
-web tests pass 11/11; `pnpm build` passes for all workspaces. Docs: `docs/modules/organization.md`,
+web tests pass 19/19, including employee directory and profile suites; `pnpm build` passes for all
+workspaces. Docs: `docs/modules/organization.md`,
 `docs/modules/employees.md`, `docs/security/permission-matrix.md`, `docs/database/phase-3-erd.md`.
 Limitations: local disk document storage is development-only; employee photo upload and salary data
 are out of scope for this phase.
