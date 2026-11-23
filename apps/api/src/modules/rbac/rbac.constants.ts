@@ -1,0 +1,305 @@
+import { PERMISSIONS, ROLE_CODES, type PermissionCode, type RoleCode } from "@peopleops/shared-types";
+
+export interface PermissionDefinition {
+  code: PermissionCode;
+  name: string;
+  description: string;
+}
+
+export const PERMISSION_DEFINITIONS: readonly PermissionDefinition[] = [
+  {
+    code: PERMISSIONS.AUTH_ME,
+    name: "View own account",
+    description: "Read the authenticated user's profile, roles and permissions",
+  },
+  {
+    code: PERMISSIONS.AUTH_CHANGE_PASSWORD,
+    name: "Change own password",
+    description: "Change the authenticated user's password",
+  },
+  {
+    code: PERMISSIONS.USER_READ,
+    name: "Read users",
+    description: "List and inspect application accounts",
+  },
+  {
+    code: PERMISSIONS.USER_CREATE,
+    name: "Create users",
+    description: "Provision new application accounts with an initial password",
+  },
+  {
+    code: PERMISSIONS.USER_UPDATE,
+    name: "Update users",
+    description: "Edit account name and email",
+  },
+  {
+    code: PERMISSIONS.USER_DEACTIVATE,
+    name: "Change user status",
+    description: "Activate, deactivate or suspend accounts",
+  },
+  {
+    code: PERMISSIONS.USER_ASSIGN_ROLE,
+    name: "Assign roles",
+    description: "Change the roles assigned to an account",
+  },
+  {
+    code: PERMISSIONS.ROLE_READ,
+    name: "Read roles",
+    description: "List roles and the permission catalog",
+  },
+  {
+    code: PERMISSIONS.ROLE_CREATE,
+    name: "Create roles",
+    description: "Create custom roles",
+  },
+  {
+    code: PERMISSIONS.ROLE_UPDATE,
+    name: "Update roles",
+    description: "Rename roles and change their permissions",
+  },
+  {
+    code: PERMISSIONS.ROLE_DELETE,
+    name: "Delete roles",
+    description: "Delete unused, non-system roles",
+  },
+  {
+    code: PERMISSIONS.COMPANY_READ,
+    name: "Read company profile",
+    description: "View the company profile",
+  },
+  {
+    code: PERMISSIONS.COMPANY_UPDATE,
+    name: "Update company profile",
+    description: "Edit the company profile",
+  },
+  {
+    code: PERMISSIONS.BRANCH_READ,
+    name: "Read branches",
+    description: "List and inspect branches",
+  },
+  {
+    code: PERMISSIONS.BRANCH_CREATE,
+    name: "Create branches",
+    description: "Add branches",
+  },
+  {
+    code: PERMISSIONS.BRANCH_UPDATE,
+    name: "Update branches",
+    description: "Edit branches and their status",
+  },
+  {
+    code: PERMISSIONS.BRANCH_DELETE,
+    name: "Delete branches",
+    description: "Delete branches that hold no departments or employees",
+  },
+  {
+    code: PERMISSIONS.DEPARTMENT_READ,
+    name: "Read departments",
+    description: "List departments and the department tree",
+  },
+  {
+    code: PERMISSIONS.DEPARTMENT_CREATE,
+    name: "Create departments",
+    description: "Add departments and place them in the hierarchy",
+  },
+  {
+    code: PERMISSIONS.DEPARTMENT_UPDATE,
+    name: "Update departments",
+    description: "Edit departments, their parent and their head",
+  },
+  {
+    code: PERMISSIONS.DEPARTMENT_DELETE,
+    name: "Delete departments",
+    description: "Delete departments that hold no positions or employees",
+  },
+  {
+    code: PERMISSIONS.POSITION_READ,
+    name: "Read positions",
+    description: "List and inspect positions",
+  },
+  {
+    code: PERMISSIONS.POSITION_CREATE,
+    name: "Create positions",
+    description: "Add positions inside a department",
+  },
+  {
+    code: PERMISSIONS.POSITION_UPDATE,
+    name: "Update positions",
+    description: "Edit positions, their department and job level",
+  },
+  {
+    code: PERMISSIONS.POSITION_DELETE,
+    name: "Delete positions",
+    description: "Delete positions with no employees",
+  },
+  {
+    code: PERMISSIONS.JOB_LEVEL_READ,
+    name: "Read job levels",
+    description: "List job levels",
+  },
+  {
+    code: PERMISSIONS.JOB_LEVEL_CREATE,
+    name: "Create job levels",
+    description: "Add job levels",
+  },
+  {
+    code: PERMISSIONS.JOB_LEVEL_UPDATE,
+    name: "Update job levels",
+    description: "Edit job levels and their display order",
+  },
+  {
+    code: PERMISSIONS.JOB_LEVEL_DELETE,
+    name: "Delete job levels",
+    description: "Delete job levels that are not in use",
+  },
+  {
+    code: PERMISSIONS.EMPLOYEE_READ,
+    name: "Read employees",
+    description: "Browse the employee directory and employee profiles",
+  },
+  {
+    code: PERMISSIONS.EMPLOYEE_CREATE,
+    name: "Create employees",
+    description: "Add employee records",
+  },
+  {
+    code: PERMISSIONS.EMPLOYEE_UPDATE,
+    name: "Update employees",
+    description: "Edit employee records and employment assignments",
+  },
+  {
+    code: PERMISSIONS.EMPLOYEE_DEACTIVATE,
+    name: "Deactivate employees",
+    description: "Mark employees inactive and close their employment record",
+  },
+  {
+    code: PERMISSIONS.EMPLOYEE_READ_SENSITIVE,
+    name: "Read sensitive employee data",
+    description: "View identity numbers, salary-related and document metadata",
+  },
+  {
+    code: PERMISSIONS.EMPLOYEE_MANAGE_DOCUMENTS,
+    name: "Manage employee documents",
+    description: "Upload, download and delete employee documents",
+  },
+  {
+    code: PERMISSIONS.EMPLOYEE_MANAGE_USER_ACCOUNT,
+    name: "Link employee accounts",
+    description: "Create or link a login account for an employee",
+  },
+  {
+    code: PERMISSIONS.EMPLOYEE_READ_TEAM,
+    name: "Read own team",
+    description: "Read employees inside the manager's reporting line",
+  },
+  {
+    code: PERMISSIONS.EMPLOYEE_READ_SELF,
+    name: "Read own employee profile",
+    description: "Read the employee record linked to the signed-in account",
+  },
+  {
+    code: PERMISSIONS.EMPLOYEE_UPDATE_SELF,
+    name: "Update own contact details",
+    description: "Edit the employee's own personal contact information",
+  },
+];
+
+const ALL_PERMISSIONS = PERMISSION_DEFINITIONS.map((permission) => permission.code);
+
+const ORGANIZATION_READ = [
+  PERMISSIONS.COMPANY_READ,
+  PERMISSIONS.BRANCH_READ,
+  PERMISSIONS.DEPARTMENT_READ,
+  PERMISSIONS.POSITION_READ,
+  PERMISSIONS.JOB_LEVEL_READ,
+] as const;
+
+const ORGANIZATION_WRITE = [
+  PERMISSIONS.COMPANY_UPDATE,
+  PERMISSIONS.BRANCH_CREATE,
+  PERMISSIONS.BRANCH_UPDATE,
+  PERMISSIONS.BRANCH_DELETE,
+  PERMISSIONS.DEPARTMENT_CREATE,
+  PERMISSIONS.DEPARTMENT_UPDATE,
+  PERMISSIONS.DEPARTMENT_DELETE,
+  PERMISSIONS.POSITION_CREATE,
+  PERMISSIONS.POSITION_UPDATE,
+  PERMISSIONS.POSITION_DELETE,
+  PERMISSIONS.JOB_LEVEL_CREATE,
+  PERMISSIONS.JOB_LEVEL_UPDATE,
+  PERMISSIONS.JOB_LEVEL_DELETE,
+] as const;
+
+const SELF_SERVICE = [
+  PERMISSIONS.AUTH_ME,
+  PERMISSIONS.AUTH_CHANGE_PASSWORD,
+  PERMISSIONS.EMPLOYEE_READ_SELF,
+  PERMISSIONS.EMPLOYEE_UPDATE_SELF,
+] as const;
+
+export interface RoleDefinition {
+  code: RoleCode;
+  name: string;
+  description: string;
+  isSystem: boolean;
+  permissions: readonly PermissionCode[];
+}
+
+export const ROLE_DEFINITIONS: readonly RoleDefinition[] = [
+  {
+    code: ROLE_CODES.SUPER_ADMIN,
+    name: "Super Administrator",
+    description: "Full access, including user and role administration",
+    isSystem: true,
+    permissions: ALL_PERMISSIONS,
+  },
+  {
+    code: ROLE_CODES.HR_ADMIN,
+    name: "HR Administrator",
+    description: "Manages accounts, the organization and employee records",
+    isSystem: false,
+    permissions: [
+      ...SELF_SERVICE,
+      PERMISSIONS.USER_READ,
+      PERMISSIONS.USER_CREATE,
+      PERMISSIONS.USER_UPDATE,
+      PERMISSIONS.USER_DEACTIVATE,
+      PERMISSIONS.USER_ASSIGN_ROLE,
+      PERMISSIONS.ROLE_READ,
+      ...ORGANIZATION_READ,
+      ...ORGANIZATION_WRITE,
+      PERMISSIONS.EMPLOYEE_READ,
+      PERMISSIONS.EMPLOYEE_CREATE,
+      PERMISSIONS.EMPLOYEE_UPDATE,
+      PERMISSIONS.EMPLOYEE_DEACTIVATE,
+      PERMISSIONS.EMPLOYEE_READ_SENSITIVE,
+      PERMISSIONS.EMPLOYEE_MANAGE_DOCUMENTS,
+      PERMISSIONS.EMPLOYEE_MANAGE_USER_ACCOUNT,
+    ],
+  },
+  {
+    code: ROLE_CODES.MANAGER,
+    name: "Manager",
+    description: "Reads the organization and the manager's own reporting line",
+    isSystem: false,
+    permissions: [
+      ...SELF_SERVICE,
+      ...ORGANIZATION_READ,
+      PERMISSIONS.EMPLOYEE_READ_TEAM,
+    ],
+  },
+  {
+    code: ROLE_CODES.PAYROLL_OFFICER,
+    name: "Payroll Officer",
+    description: "Payroll operations (module permissions arrive in a later phase)",
+    isSystem: false,
+    permissions: [...SELF_SERVICE, ...ORGANIZATION_READ],
+  },
+  {
+    code: ROLE_CODES.EMPLOYEE,
+    name: "Employee",
+    description: "Self-service access for employees",
+    isSystem: false,
+    permissions: [...SELF_SERVICE],
+  },
+];

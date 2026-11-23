@@ -1,0 +1,31 @@
+{
+  "name": "peopleops",
+  "version": "0.0.0",
+  "private": true,
+  "description": "PeopleOps — single-company HRIS (pnpm workspace)",
+  "packageManager": "pnpm@11.24.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "build:packages": "pnpm --filter \"./packages/**\" build",
+    "dev": "pnpm build:packages && pnpm --filter @peopleops/api --filter @peopleops/web --parallel dev",
+    "test": "pnpm -r --if-present test",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:up": "docker compose up -d db",
+    "db:down": "docker compose down",
+    "db:generate": "pnpm --filter @peopleops/database generate",
+    "db:migrate": "pnpm --filter @peopleops/database migrate:deploy",
+    "db:migrate:dev": "pnpm --filter @peopleops/database migrate:dev",
+    "db:studio": "pnpm --filter @peopleops/database studio",
+    "db:seed": "pnpm --filter @peopleops/api seed",
+    "db:seed:demo": "pnpm --filter @peopleops/api seed:demo"
+  },
+  "devDependencies": {
+    "prettier": "3.10.1"
+  }
+}

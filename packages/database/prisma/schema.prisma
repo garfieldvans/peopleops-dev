@@ -1,0 +1,433 @@
+// PeopleOps database schema.
+//
+// Phase 2 adds authentication and RBAC. Phase 3 adds the organization structure
+// (company, branches, departments, positions, job levels) and employees.
+// Attendance, leave, payroll and performance tables arrive with their modules.
+// See docs/database/erd.md.
+//
+// Prisma 7 requires a driver adapter at runtime; the connection is created in
+// packages/database/src/index.ts (@prisma/adapter-pg).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+model User {
+  id           String     @id @default(uuid()) @db.Uuid
+  name         String
+  email        String     @unique
+  passwordHash String     @map("password_hash")
+  status       UserStatus @default(ACTIVE)
+  lastLoginAt  DateTime?  @map("last_login_at")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  roles    UserRole[]
+  sessions UserSession[]
+  /// A login account exists independently of an employee record; the link is optional.
+  employee Employee?
+
+  employmentHistoriesCreated EmploymentHistory[] @relation("EmploymentHistoryCreator")
+  documentsUploaded          EmployeeDocument[]  @relation("EmployeeDocumentUploader")
+
+  @@map("users")
+}
+
+model Role {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String
+  code        String   @unique
+  description String?
+  /// System roles (SUPER_ADMIN) are protected from deletion and permission edits.
+  isSystem    Boolean  @default(false) @map("is_system")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  users       UserRole[]
+  permissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String
+  code        String   @unique
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  roles RolePermission[]
+
+  @@map("permissions")
+}
+
+model UserRole {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  roleId    String   @map("role_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@index([roleId])
+  @@map("user_roles")
+}
+
+model RolePermission {
+  id           String   @id @default(uuid()) @db.Uuid
+  roleId       String   @map("role_id") @db.Uuid
+  permissionId String   @map("permission_id") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@index([permissionId])
+  @@map("role_permissions")
+}
+
+model UserSession {
+  id               String    @id @default(uuid()) @db.Uuid
+  userId           String    @map("user_id") @db.Uuid
+  /// SHA-256 hash of the opaque refresh token. The raw value never touches the database.
+  refreshTokenHash String    @unique @map("refresh_token_hash")
+  /// Rotated tokens of one login share a family, enabling reuse detection.
+  familyId         String    @map("family_id") @db.Uuid
+  expiresAt        DateTime  @map("expires_at")
+  revokedAt        DateTime? @map("revoked_at")
+  ipAddress        String?   @map("ip_address")
+  userAgent        String?   @map("user_agent")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([familyId])
+  @@index([expiresAt])
+  @@map("user_sessions")
+}
+
+/// Append-only security trail. No foreign keys: history must survive user changes.
+model AuditLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  actorUserId String?  @map("actor_user_id") @db.Uuid
+  actorEmail  String?  @map("actor_email")
+  action      String
+  entityType  String   @map("entity_type")
+  entityId    String?  @map("entity_id")
+  metadata    Json?
+  ipAddress   String?  @map("ip_address")
+  userAgent   String?  @map("user_agent")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([entityType, entityId])
+  @@index([actorUserId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ---------------------------------------------------------------------------
+// Phase 3 — Organization & employees
+// ---------------------------------------------------------------------------
+
+/// Company-level master status. Records are deactivated, not deleted, so that
+/// historical employment data keeps a valid reference.
+enum MasterStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum MaritalStatus {
+  SINGLE
+  MARRIED
+  DIVORCED
+  WIDOWED
+}
+
+enum EmploymentType {
+  PERMANENT
+  CONTRACT
+  INTERN
+  FREELANCE
+  PART_TIME
+}
+
+enum EmploymentStatus {
+  ACTIVE
+  PROBATION
+  INACTIVE
+  RESIGNED
+  TERMINATED
+}
+
+enum EmployeeDocumentCategory {
+  CONTRACT
+  IDENTITY
+  CERTIFICATE
+  OTHER
+}
+
+/// Single-company deployment: exactly one row, seeded and then updated in place.
+model Company {
+  id                 String   @id @default(uuid()) @db.Uuid
+  name               String
+  code               String   @unique
+  registrationNumber String?  @map("registration_number")
+  email              String
+  phone              String?
+  website            String?
+  addressLine        String?  @map("address_line")
+  city               String?
+  province           String?
+  postalCode         String?  @map("postal_code")
+  country            String   @default("Indonesia")
+  logoUrl            String?  @map("logo_url")
+  timezone           String   @default("Asia/Jakarta")
+  currency           String   @default("IDR")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  @@map("companies")
+}
+
+model Branch {
+  id         String       @id @default(uuid()) @db.Uuid
+  name       String
+  code       String       @unique
+  address    String?
+  city       String?
+  province   String?
+  postalCode String?      @map("postal_code")
+  phone      String?
+  email      String?
+  status     MasterStatus @default(ACTIVE)
+  createdAt  DateTime     @default(now()) @map("created_at")
+  updatedAt  DateTime     @updatedAt @map("updated_at")
+
+  departments Department[]
+  employees   Employee[]
+  history     EmploymentHistory[]
+
+  @@index([status])
+  @@map("branches")
+}
+
+model JobLevel {
+  id           String       @id @default(uuid()) @db.Uuid
+  name         String
+  code         String       @unique
+  description  String?
+  displayOrder Int          @default(0) @map("display_order")
+  status       MasterStatus @default(ACTIVE)
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  positions Position[]
+  employees Employee[]
+  history   EmploymentHistory[]
+
+  @@index([displayOrder])
+  @@map("job_levels")
+}
+
+/// Departments form a tree per company. `branch_id` is optional because a
+/// department can span branches; codes are unique company-wide.
+model Department {
+  id             String       @id @default(uuid()) @db.Uuid
+  name           String
+  code           String       @unique
+  description    String?
+  status         MasterStatus @default(ACTIVE)
+  branchId       String?      @map("branch_id") @db.Uuid
+  parentId       String?      @map("parent_id") @db.Uuid
+  headEmployeeId String?      @map("head_employee_id") @db.Uuid
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  branch    Branch?   @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  parent    Department? @relation("DepartmentHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+  children  Department[] @relation("DepartmentHierarchy")
+  head      Employee? @relation("DepartmentHead", fields: [headEmployeeId], references: [id], onDelete: SetNull)
+  positions Position[]
+  employees Employee[]
+  history   EmploymentHistory[]
+
+  @@index([parentId])
+  @@index([branchId])
+  @@index([headEmployeeId])
+  @@map("departments")
+}
+
+model Position {
+  id           String       @id @default(uuid()) @db.Uuid
+  title        String
+  code         String       @unique
+  description  String?
+  status       MasterStatus @default(ACTIVE)
+  departmentId String       @map("department_id") @db.Uuid
+  jobLevelId   String?      @map("job_level_id") @db.Uuid
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  department Department  @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  jobLevel   JobLevel?   @relation(fields: [jobLevelId], references: [id], onDelete: Restrict)
+  employees  Employee[]
+  history    EmploymentHistory[]
+
+  @@index([departmentId])
+  @@index([jobLevelId])
+  @@map("positions")
+}
+
+/// An employee exists independently of a login account: `user_id` is optional
+/// and unique, so one account can never be linked to two employees.
+model Employee {
+  id               String           @id @default(uuid()) @db.Uuid
+  employeeNumber   String           @unique @map("employee_number")
+  firstName        String           @map("first_name")
+  middleName       String?          @map("middle_name")
+  lastName         String           @map("last_name")
+  preferredName    String?          @map("preferred_name")
+  gender           Gender?
+  birthDate        DateTime?        @db.Date @map("birth_date")
+  placeOfBirth     String?          @map("place_of_birth")
+  maritalStatus    MaritalStatus?   @map("marital_status")
+  nationality      String?
+  personalEmail    String           @map("personal_email")
+  phone            String?
+  addressLine      String?          @map("address_line")
+  city             String?
+  province         String?
+  postalCode       String?          @map("postal_code")
+  country          String           @default("Indonesia")
+  photoUrl         String?          @map("photo_url")
+  employmentType   EmploymentType   @map("employment_type")
+  employmentStatus EmploymentStatus @default(ACTIVE) @map("employment_status")
+  joinDate         DateTime         @db.Date @map("join_date")
+  probationEndDate DateTime?        @db.Date @map("probation_end_date")
+  contractStartDate DateTime?       @db.Date @map("contract_start_date")
+  contractEndDate  DateTime?        @db.Date @map("contract_end_date")
+  workEmail        String?          @map("work_email")
+  branchId         String?          @map("branch_id") @db.Uuid
+  departmentId     String?          @map("department_id") @db.Uuid
+  positionId       String?          @map("position_id") @db.Uuid
+  jobLevelId       String?          @map("job_level_id") @db.Uuid
+  managerId        String?          @map("manager_id") @db.Uuid
+  userId           String?          @unique @map("user_id") @db.Uuid
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+
+  branch     Branch?    @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  department Department? @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  position   Position?  @relation(fields: [positionId], references: [id], onDelete: Restrict)
+  jobLevel   JobLevel?  @relation(fields: [jobLevelId], references: [id], onDelete: Restrict)
+  user       User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  manager    Employee?  @relation("EmployeeManager", fields: [managerId], references: [id], onDelete: Restrict)
+  reports    Employee[] @relation("EmployeeManager")
+
+  headedDepartments Department[]          @relation("DepartmentHead")
+  historyAsManager  EmploymentHistory[]    @relation("EmploymentHistoryManager")
+  employmentHistories EmploymentHistory[]
+  emergencyContacts   EmployeeEmergencyContact[]
+  documents           EmployeeDocument[]
+
+  @@index([lastName, firstName])
+  @@index([branchId])
+  @@index([departmentId])
+  @@index([positionId])
+  @@index([jobLevelId])
+  @@index([managerId])
+  @@index([employmentStatus])
+  @@map("employees")
+}
+
+model EmployeeEmergencyContact {
+  id           String   @id @default(uuid()) @db.Uuid
+  employeeId   String   @map("employee_id") @db.Uuid
+  fullName     String   @map("full_name")
+  relationship String
+  phone        String
+  email        String?
+  address      String?
+  isPrimary    Boolean  @default(false) @map("is_primary")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+  @@map("employee_emergency_contacts")
+}
+
+/// Metadata only. Binary content lives behind the storage abstraction
+/// (`storage_key`), never in PostgreSQL and never behind a public URL.
+model EmployeeDocument {
+  id           String                   @id @default(uuid()) @db.Uuid
+  employeeId   String                   @map("employee_id") @db.Uuid
+  category     EmployeeDocumentCategory @default(OTHER)
+  title        String
+  fileName     String                   @map("file_name")
+  mimeType     String                   @map("mime_type")
+  sizeBytes    Int                      @map("size_bytes")
+  storageKey   String                   @unique @map("storage_key")
+  uploadedById String?                  @map("uploaded_by_id") @db.Uuid
+  createdAt    DateTime                 @default(now()) @map("created_at")
+
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  uploadedBy User?    @relation("EmployeeDocumentUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  @@index([employeeId])
+  @@map("employee_documents")
+}
+
+/// Append-only trail of employment assignments. The current assignment lives on
+/// `employees`; history rows are written in the same transaction as a change.
+model EmploymentHistory {
+  id               String           @id @default(uuid()) @db.Uuid
+  employeeId       String           @map("employee_id") @db.Uuid
+  effectiveFrom    DateTime         @db.Date @map("effective_from")
+  effectiveTo      DateTime?        @db.Date @map("effective_to")
+  employmentType   EmploymentType   @map("employment_type")
+  employmentStatus EmploymentStatus @map("employment_status")
+  branchId         String?          @map("branch_id") @db.Uuid
+  departmentId     String?          @map("department_id") @db.Uuid
+  positionId       String?          @map("position_id") @db.Uuid
+  jobLevelId       String?          @map("job_level_id") @db.Uuid
+  managerId        String?          @map("manager_id") @db.Uuid
+  changeReason     String?          @map("change_reason")
+  notes            String?
+  createdById      String?          @map("created_by_id") @db.Uuid
+  createdAt        DateTime         @default(now()) @map("created_at")
+
+  employee  Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  branch    Branch?   @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  department Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  position  Position? @relation(fields: [positionId], references: [id], onDelete: SetNull)
+  jobLevel  JobLevel? @relation(fields: [jobLevelId], references: [id], onDelete: SetNull)
+  manager   Employee? @relation("EmploymentHistoryManager", fields: [managerId], references: [id], onDelete: SetNull)
+  createdBy User?     @relation("EmploymentHistoryCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([employeeId, effectiveFrom])
+  @@map("employment_histories")
+}

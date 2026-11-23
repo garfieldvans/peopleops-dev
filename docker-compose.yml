@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: peopleops-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: peopleops
+      POSTGRES_PASSWORD: peopleops_dev
+      POSTGRES_DB: peopleops
+    ports:
+      - "5432:5432"
+    volumes:
+      - peopleops-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U peopleops -d peopleops"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  peopleops-db-data:
