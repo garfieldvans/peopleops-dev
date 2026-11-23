@@ -202,6 +202,116 @@ export const PERMISSION_DEFINITIONS: readonly PermissionDefinition[] = [
     name: "Update own contact details",
     description: "Edit the employee's own personal contact information",
   },
+  {
+    code: PERMISSIONS.WORK_SCHEDULE_READ,
+    name: "Read work schedules",
+    description: "View work schedules and their working days",
+  },
+  {
+    code: PERMISSIONS.WORK_SCHEDULE_CREATE,
+    name: "Create work schedules",
+    description: "Add work schedules",
+  },
+  {
+    code: PERMISSIONS.WORK_SCHEDULE_UPDATE,
+    name: "Update work schedules",
+    description: "Edit work schedules and working days",
+  },
+  {
+    code: PERMISSIONS.WORK_SCHEDULE_DEACTIVATE,
+    name: "Deactivate work schedules",
+    description: "Deactivate work schedules that are no longer used",
+  },
+  {
+    code: PERMISSIONS.SHIFT_READ,
+    name: "Read shifts",
+    description: "View shift master data",
+  },
+  {
+    code: PERMISSIONS.SHIFT_CREATE,
+    name: "Create shifts",
+    description: "Add shifts, including overnight shifts",
+  },
+  {
+    code: PERMISSIONS.SHIFT_UPDATE,
+    name: "Update shifts",
+    description: "Edit shift master data",
+  },
+  {
+    code: PERMISSIONS.SHIFT_DEACTIVATE,
+    name: "Deactivate shifts",
+    description: "Deactivate shifts that are no longer assigned",
+  },
+  {
+    code: PERMISSIONS.ATTENDANCE_READ,
+    name: "Read own attendance",
+    description: "View the attendance record linked to the signed-in account",
+  },
+  {
+    code: PERMISSIONS.ATTENDANCE_READ_ALL,
+    name: "Read all attendance",
+    description: "View attendance for every employee",
+  },
+  {
+    code: PERMISSIONS.ATTENDANCE_READ_TEAM,
+    name: "Read team attendance",
+    description: "View attendance for employees inside the manager's reporting line",
+  },
+  {
+    code: PERMISSIONS.ATTENDANCE_CLOCK_IN,
+    name: "Clock in",
+    description: "Record the signed-in employee's clock-in",
+  },
+  {
+    code: PERMISSIONS.ATTENDANCE_CLOCK_OUT,
+    name: "Clock out",
+    description: "Record the signed-in employee's clock-out and breaks",
+  },
+  {
+    code: PERMISSIONS.ATTENDANCE_MANAGE,
+    name: "Manage attendance",
+    description: "Manually adjust attendance records with audit logging",
+  },
+  {
+    code: PERMISSIONS.ATTENDANCE_EXPORT,
+    name: "Export attendance",
+    description: "Export attendance records as CSV",
+  },
+  {
+    code: PERMISSIONS.ATTENDANCE_CORRECTION_READ,
+    name: "Read attendance corrections",
+    description: "View attendance correction requests",
+  },
+  {
+    code: PERMISSIONS.ATTENDANCE_CORRECTION_CREATE,
+    name: "Request attendance corrections",
+    description: "Submit correction requests for the signed-in employee",
+  },
+  {
+    code: PERMISSIONS.ATTENDANCE_CORRECTION_REVIEW,
+    name: "Review attendance corrections",
+    description: "Approve or reject attendance correction requests within scope",
+  },
+  {
+    code: PERMISSIONS.HOLIDAY_READ,
+    name: "Read holidays",
+    description: "View the holiday calendar",
+  },
+  {
+    code: PERMISSIONS.HOLIDAY_CREATE,
+    name: "Create holidays",
+    description: "Add national, company or branch holidays",
+  },
+  {
+    code: PERMISSIONS.HOLIDAY_UPDATE,
+    name: "Update holidays",
+    description: "Edit holiday master data",
+  },
+  {
+    code: PERMISSIONS.HOLIDAY_DEACTIVATE,
+    name: "Deactivate holidays",
+    description: "Deactivate holidays that no longer apply",
+  },
 ];
 
 const ALL_PERMISSIONS = PERMISSION_DEFINITIONS.map((permission) => permission.code);
@@ -212,6 +322,21 @@ const ORGANIZATION_READ = [
   PERMISSIONS.DEPARTMENT_READ,
   PERMISSIONS.POSITION_READ,
   PERMISSIONS.JOB_LEVEL_READ,
+] as const;
+
+const ATTENDANCE_READ_ALL = [
+  PERMISSIONS.ATTENDANCE_READ,
+  PERMISSIONS.ATTENDANCE_READ_ALL,
+  PERMISSIONS.ATTENDANCE_MANAGE,
+  PERMISSIONS.ATTENDANCE_EXPORT,
+] as const;
+
+const ATTENDANCE_SELF = [
+  PERMISSIONS.ATTENDANCE_READ,
+  PERMISSIONS.ATTENDANCE_CLOCK_IN,
+  PERMISSIONS.ATTENDANCE_CLOCK_OUT,
+  PERMISSIONS.ATTENDANCE_CORRECTION_READ,
+  PERMISSIONS.ATTENDANCE_CORRECTION_CREATE,
 ] as const;
 
 const ORGANIZATION_WRITE = [
@@ -275,6 +400,22 @@ export const ROLE_DEFINITIONS: readonly RoleDefinition[] = [
       PERMISSIONS.EMPLOYEE_READ_SENSITIVE,
       PERMISSIONS.EMPLOYEE_MANAGE_DOCUMENTS,
       PERMISSIONS.EMPLOYEE_MANAGE_USER_ACCOUNT,
+      PERMISSIONS.WORK_SCHEDULE_READ,
+      PERMISSIONS.WORK_SCHEDULE_CREATE,
+      PERMISSIONS.WORK_SCHEDULE_UPDATE,
+      PERMISSIONS.WORK_SCHEDULE_DEACTIVATE,
+      PERMISSIONS.SHIFT_READ,
+      PERMISSIONS.SHIFT_CREATE,
+      PERMISSIONS.SHIFT_UPDATE,
+      PERMISSIONS.SHIFT_DEACTIVATE,
+      ...ATTENDANCE_READ_ALL,
+      PERMISSIONS.ATTENDANCE_CORRECTION_READ,
+      PERMISSIONS.ATTENDANCE_CORRECTION_CREATE,
+      PERMISSIONS.ATTENDANCE_CORRECTION_REVIEW,
+      PERMISSIONS.HOLIDAY_READ,
+      PERMISSIONS.HOLIDAY_CREATE,
+      PERMISSIONS.HOLIDAY_UPDATE,
+      PERMISSIONS.HOLIDAY_DEACTIVATE,
     ],
   },
   {
@@ -286,6 +427,13 @@ export const ROLE_DEFINITIONS: readonly RoleDefinition[] = [
       ...SELF_SERVICE,
       ...ORGANIZATION_READ,
       PERMISSIONS.EMPLOYEE_READ_TEAM,
+      PERMISSIONS.WORK_SCHEDULE_READ,
+      PERMISSIONS.SHIFT_READ,
+      PERMISSIONS.HOLIDAY_READ,
+      PERMISSIONS.ATTENDANCE_READ,
+      PERMISSIONS.ATTENDANCE_READ_TEAM,
+      PERMISSIONS.ATTENDANCE_CORRECTION_READ,
+      PERMISSIONS.ATTENDANCE_CORRECTION_REVIEW,
     ],
   },
   {
@@ -293,13 +441,26 @@ export const ROLE_DEFINITIONS: readonly RoleDefinition[] = [
     name: "Payroll Officer",
     description: "Payroll operations (module permissions arrive in a later phase)",
     isSystem: false,
-    permissions: [...SELF_SERVICE, ...ORGANIZATION_READ],
+    permissions: [
+      ...SELF_SERVICE,
+      ...ORGANIZATION_READ,
+      PERMISSIONS.HOLIDAY_READ,
+      PERMISSIONS.ATTENDANCE_READ,
+      PERMISSIONS.ATTENDANCE_READ_ALL,
+      PERMISSIONS.ATTENDANCE_EXPORT,
+    ],
   },
   {
     code: ROLE_CODES.EMPLOYEE,
     name: "Employee",
     description: "Self-service access for employees",
     isSystem: false,
-    permissions: [...SELF_SERVICE],
+    permissions: [
+      ...SELF_SERVICE,
+      PERMISSIONS.WORK_SCHEDULE_READ,
+      PERMISSIONS.SHIFT_READ,
+      PERMISSIONS.HOLIDAY_READ,
+      ...ATTENDANCE_SELF,
+    ],
   },
 ];

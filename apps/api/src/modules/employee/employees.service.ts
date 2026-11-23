@@ -559,7 +559,7 @@ export class EmployeesService {
     });
   }
 
-  private async resolveScope(user: AuthenticatedUser): Promise<EmployeeScope> {
+  async resolveScope(user: AuthenticatedUser): Promise<EmployeeScope> {
     const permissions = new Set(user.permissions);
     const linked = await this.prisma.employee.findUnique({
       where: { userId: user.id },
@@ -575,7 +575,7 @@ export class EmployeesService {
   }
 
   /** Walks the reporting line level by level; a person is their own first member. */
-  private async scopedEmployeeIds(scope: EmployeeScope): Promise<string[]> {
+  async scopedEmployeeIds(scope: EmployeeScope): Promise<string[]> {
     if (!scope.employeeId) return [];
 
     const ids = new Set<string>([scope.employeeId]);

@@ -13,6 +13,33 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { to: "/", label: "Overview" },
+  {
+    to: "/attendance/me",
+    label: "My attendance",
+    permission: PERMISSIONS.ATTENDANCE_READ,
+  },
+  {
+    to: "/attendance",
+    label: "Attendance",
+    anyPermission: [PERMISSIONS.ATTENDANCE_READ_ALL, PERMISSIONS.ATTENDANCE_READ_TEAM],
+  },
+  {
+    to: "/attendance/corrections",
+    label: "Corrections",
+    permission: PERMISSIONS.ATTENDANCE_CORRECTION_READ,
+  },
+  {
+    to: "/attendance/schedules",
+    label: "Work schedules",
+    permission: PERMISSIONS.WORK_SCHEDULE_READ,
+  },
+  { to: "/attendance/shifts", label: "Shifts", permission: PERMISSIONS.SHIFT_READ },
+  {
+    to: "/attendance/assignments",
+    label: "Schedule assignments",
+    permission: PERMISSIONS.EMPLOYEE_READ,
+  },
+  { to: "/attendance/holidays", label: "Holidays", permission: PERMISSIONS.HOLIDAY_READ },
   { to: "/employees/me", label: "My profile", permission: PERMISSIONS.EMPLOYEE_READ_SELF },
   {
     to: "/employees",

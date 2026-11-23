@@ -52,6 +52,7 @@
     "class-validator": "^0.14.2",
     "cookie-parser": "^1.4.7",
     "dotenv": "^17.2.3",
+    "luxon": "^3.7.2",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "zod": "4.6.7"
@@ -64,6 +65,7 @@
     "@types/cookie-parser": "^1.4.9",
     "@types/express": "^5.0.0",
     "@types/jest": "^30.0.0",
+    "@types/luxon": "^3.7.6",
     "@types/node": "^26.6.6",
     "@types/supertest": "^6.0.3",
     "eslint": "10.15.0",

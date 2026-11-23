@@ -37,8 +37,11 @@ model User {
   /// A login account exists independently of an employee record; the link is optional.
   employee Employee?
 
-  employmentHistoriesCreated EmploymentHistory[] @relation("EmploymentHistoryCreator")
-  documentsUploaded          EmployeeDocument[]  @relation("EmployeeDocumentUploader")
+  employmentHistoriesCreated EmploymentHistory[]          @relation("EmploymentHistoryCreator")
+  documentsUploaded          EmployeeDocument[]           @relation("EmployeeDocumentUploader")
+  scheduleAssignmentsCreated EmployeeScheduleAssignment[] @relation("ScheduleAssignmentCreator")
+  attendanceBreaksCreated    AttendanceBreak[]            @relation("AttendanceBreakCreator")
+  correctionsReviewed        AttendanceCorrection[]       @relation("AttendanceCorrectionReviewer")
 
   @@map("users")
 }
@@ -228,6 +231,7 @@ model Branch {
   departments Department[]
   employees   Employee[]
   history     EmploymentHistory[]
+  holidays    Holiday[]
 
   @@index([status])
   @@map("branches")
@@ -265,10 +269,10 @@ model Department {
   createdAt      DateTime     @default(now()) @map("created_at")
   updatedAt      DateTime     @updatedAt @map("updated_at")
 
-  branch    Branch?   @relation(fields: [branchId], references: [id], onDelete: Restrict)
-  parent    Department? @relation("DepartmentHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
-  children  Department[] @relation("DepartmentHierarchy")
-  head      Employee? @relation("DepartmentHead", fields: [headEmployeeId], references: [id], onDelete: SetNull)
+  branch    Branch?             @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  parent    Department?         @relation("DepartmentHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+  children  Department[]        @relation("DepartmentHierarchy")
+  head      Employee?           @relation("DepartmentHead", fields: [headEmployeeId], references: [id], onDelete: SetNull)
   positions Position[]
   employees Employee[]
   history   EmploymentHistory[]
@@ -290,8 +294,8 @@ model Position {
   createdAt    DateTime     @default(now()) @map("created_at")
   updatedAt    DateTime     @updatedAt @map("updated_at")
 
-  department Department  @relation(fields: [departmentId], references: [id], onDelete: Restrict)
-  jobLevel   JobLevel?   @relation(fields: [jobLevelId], references: [id], onDelete: Restrict)
+  department Department          @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  jobLevel   JobLevel?           @relation(fields: [jobLevelId], references: [id], onDelete: Restrict)
   employees  Employee[]
   history    EmploymentHistory[]
 
@@ -303,54 +307,57 @@ model Position {
 /// An employee exists independently of a login account: `user_id` is optional
 /// and unique, so one account can never be linked to two employees.
 model Employee {
-  id               String           @id @default(uuid()) @db.Uuid
-  employeeNumber   String           @unique @map("employee_number")
-  firstName        String           @map("first_name")
-  middleName       String?          @map("middle_name")
-  lastName         String           @map("last_name")
-  preferredName    String?          @map("preferred_name")
-  gender           Gender?
-  birthDate        DateTime?        @db.Date @map("birth_date")
-  placeOfBirth     String?          @map("place_of_birth")
-  maritalStatus    MaritalStatus?   @map("marital_status")
-  nationality      String?
-  personalEmail    String           @map("personal_email")
-  phone            String?
-  addressLine      String?          @map("address_line")
-  city             String?
-  province         String?
-  postalCode       String?          @map("postal_code")
-  country          String           @default("Indonesia")
-  photoUrl         String?          @map("photo_url")
-  employmentType   EmploymentType   @map("employment_type")
-  employmentStatus EmploymentStatus @default(ACTIVE) @map("employment_status")
-  joinDate         DateTime         @db.Date @map("join_date")
-  probationEndDate DateTime?        @db.Date @map("probation_end_date")
-  contractStartDate DateTime?       @db.Date @map("contract_start_date")
-  contractEndDate  DateTime?        @db.Date @map("contract_end_date")
-  workEmail        String?          @map("work_email")
-  branchId         String?          @map("branch_id") @db.Uuid
-  departmentId     String?          @map("department_id") @db.Uuid
-  positionId       String?          @map("position_id") @db.Uuid
-  jobLevelId       String?          @map("job_level_id") @db.Uuid
-  managerId        String?          @map("manager_id") @db.Uuid
-  userId           String?          @unique @map("user_id") @db.Uuid
-  createdAt        DateTime         @default(now()) @map("created_at")
-  updatedAt        DateTime         @updatedAt @map("updated_at")
+  id                String           @id @default(uuid()) @db.Uuid
+  employeeNumber    String           @unique @map("employee_number")
+  firstName         String           @map("first_name")
+  middleName        String?          @map("middle_name")
+  lastName          String           @map("last_name")
+  preferredName     String?          @map("preferred_name")
+  gender            Gender?
+  birthDate         DateTime?        @map("birth_date") @db.Date
+  placeOfBirth      String?          @map("place_of_birth")
+  maritalStatus     MaritalStatus?   @map("marital_status")
+  nationality       String?
+  personalEmail     String           @map("personal_email")
+  phone             String?
+  addressLine       String?          @map("address_line")
+  city              String?
+  province          String?
+  postalCode        String?          @map("postal_code")
+  country           String           @default("Indonesia")
+  photoUrl          String?          @map("photo_url")
+  employmentType    EmploymentType   @map("employment_type")
+  employmentStatus  EmploymentStatus @default(ACTIVE) @map("employment_status")
+  joinDate          DateTime         @map("join_date") @db.Date
+  probationEndDate  DateTime?        @map("probation_end_date") @db.Date
+  contractStartDate DateTime?        @map("contract_start_date") @db.Date
+  contractEndDate   DateTime?        @map("contract_end_date") @db.Date
+  workEmail         String?          @map("work_email")
+  branchId          String?          @map("branch_id") @db.Uuid
+  departmentId      String?          @map("department_id") @db.Uuid
+  positionId        String?          @map("position_id") @db.Uuid
+  jobLevelId        String?          @map("job_level_id") @db.Uuid
+  managerId         String?          @map("manager_id") @db.Uuid
+  userId            String?          @unique @map("user_id") @db.Uuid
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
 
-  branch     Branch?    @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  branch     Branch?     @relation(fields: [branchId], references: [id], onDelete: Restrict)
   department Department? @relation(fields: [departmentId], references: [id], onDelete: Restrict)
-  position   Position?  @relation(fields: [positionId], references: [id], onDelete: Restrict)
-  jobLevel   JobLevel?  @relation(fields: [jobLevelId], references: [id], onDelete: Restrict)
-  user       User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
-  manager    Employee?  @relation("EmployeeManager", fields: [managerId], references: [id], onDelete: Restrict)
-  reports    Employee[] @relation("EmployeeManager")
+  position   Position?   @relation(fields: [positionId], references: [id], onDelete: Restrict)
+  jobLevel   JobLevel?   @relation(fields: [jobLevelId], references: [id], onDelete: Restrict)
+  user       User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  manager    Employee?   @relation("EmployeeManager", fields: [managerId], references: [id], onDelete: Restrict)
+  reports    Employee[]  @relation("EmployeeManager")
 
-  headedDepartments Department[]          @relation("DepartmentHead")
-  historyAsManager  EmploymentHistory[]    @relation("EmploymentHistoryManager")
-  employmentHistories EmploymentHistory[]
-  emergencyContacts   EmployeeEmergencyContact[]
-  documents           EmployeeDocument[]
+  headedDepartments     Department[]                 @relation("DepartmentHead")
+  historyAsManager      EmploymentHistory[]          @relation("EmploymentHistoryManager")
+  employmentHistories   EmploymentHistory[]
+  emergencyContacts     EmployeeEmergencyContact[]
+  documents             EmployeeDocument[]
+  scheduleAssignments   EmployeeScheduleAssignment[]
+  attendanceRecords     AttendanceRecord[]
+  attendanceCorrections AttendanceCorrection[]
 
   @@index([lastName, firstName])
   @@index([branchId])
@@ -406,8 +413,8 @@ model EmployeeDocument {
 model EmploymentHistory {
   id               String           @id @default(uuid()) @db.Uuid
   employeeId       String           @map("employee_id") @db.Uuid
-  effectiveFrom    DateTime         @db.Date @map("effective_from")
-  effectiveTo      DateTime?        @db.Date @map("effective_to")
+  effectiveFrom    DateTime         @map("effective_from") @db.Date
+  effectiveTo      DateTime?        @map("effective_to") @db.Date
   employmentType   EmploymentType   @map("employment_type")
   employmentStatus EmploymentStatus @map("employment_status")
   branchId         String?          @map("branch_id") @db.Uuid
@@ -420,14 +427,230 @@ model EmploymentHistory {
   createdById      String?          @map("created_by_id") @db.Uuid
   createdAt        DateTime         @default(now()) @map("created_at")
 
-  employee  Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  branch    Branch?   @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  employee   Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  branch     Branch?     @relation(fields: [branchId], references: [id], onDelete: SetNull)
   department Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
-  position  Position? @relation(fields: [positionId], references: [id], onDelete: SetNull)
-  jobLevel  JobLevel? @relation(fields: [jobLevelId], references: [id], onDelete: SetNull)
-  manager   Employee? @relation("EmploymentHistoryManager", fields: [managerId], references: [id], onDelete: SetNull)
-  createdBy User?     @relation("EmploymentHistoryCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  position   Position?   @relation(fields: [positionId], references: [id], onDelete: SetNull)
+  jobLevel   JobLevel?   @relation(fields: [jobLevelId], references: [id], onDelete: SetNull)
+  manager    Employee?   @relation("EmploymentHistoryManager", fields: [managerId], references: [id], onDelete: SetNull)
+  createdBy  User?       @relation("EmploymentHistoryCreator", fields: [createdById], references: [id], onDelete: SetNull)
 
   @@index([employeeId, effectiveFrom])
   @@map("employment_histories")
+}
+
+// ---------------------------------------------------------------------------
+// Attendance (Phase 4)
+// ---------------------------------------------------------------------------
+
+enum AttendanceStatus {
+  PRESENT
+  LATE
+  EARLY_LEAVE
+  LATE_AND_EARLY_LEAVE
+  ABSENT
+  HALF_DAY
+  INCOMPLETE
+}
+
+enum AttendanceCorrectionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum AttendanceCorrectionType {
+  CLOCK_IN
+  CLOCK_OUT
+  BOTH
+}
+
+enum HolidayType {
+  NATIONAL
+  COMPANY
+  BRANCH
+}
+
+/// Expected working days and hours. Times are wall-clock values interpreted in
+/// the company timezone; an end time earlier than the start time crosses midnight.
+model WorkSchedule {
+  id                String       @id @default(uuid()) @db.Uuid
+  name              String
+  code              String       @unique
+  description       String?
+  graceLateMinutes  Int          @default(0) @map("grace_late_minutes")
+  graceEarlyMinutes Int          @default(0) @map("grace_early_minutes")
+  status            MasterStatus @default(ACTIVE)
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
+
+  days        WorkScheduleDay[]
+  assignments EmployeeScheduleAssignment[]
+  records     AttendanceRecord[]
+
+  @@map("work_schedules")
+}
+
+model WorkScheduleDay {
+  id           String  @id @default(uuid()) @db.Uuid
+  scheduleId   String  @map("schedule_id") @db.Uuid
+  /// ISO weekday: 1 = Monday … 7 = Sunday.
+  dayOfWeek    Int     @map("day_of_week")
+  isWorkingDay Boolean @default(true) @map("is_working_day")
+  startTime    String? @map("start_time") @db.VarChar(5)
+  endTime      String? @map("end_time") @db.VarChar(5)
+  breakMinutes Int     @default(0) @map("break_minutes")
+
+  schedule WorkSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+  @@unique([scheduleId, dayOfWeek])
+  @@map("work_schedule_days")
+}
+
+/// Shift master. A shift replaces the schedule's daily hours when assigned.
+model Shift {
+  id                String       @id @default(uuid()) @db.Uuid
+  name              String
+  code              String       @unique
+  description       String?
+  startTime         String       @map("start_time") @db.VarChar(5)
+  endTime           String       @map("end_time") @db.VarChar(5)
+  breakMinutes      Int          @default(0) @map("break_minutes")
+  graceLateMinutes  Int          @default(0) @map("grace_late_minutes")
+  graceEarlyMinutes Int          @default(0) @map("grace_early_minutes")
+  status            MasterStatus @default(ACTIVE)
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
+
+  assignments EmployeeScheduleAssignment[]
+  records     AttendanceRecord[]
+
+  @@map("shifts")
+}
+
+/// An effective-dated schedule/shift assignment. Historical rows are never edited
+/// retroactively; a change closes the previous row and inserts a new one.
+model EmployeeScheduleAssignment {
+  id             String    @id @default(uuid()) @db.Uuid
+  employeeId     String    @map("employee_id") @db.Uuid
+  workScheduleId String    @map("work_schedule_id") @db.Uuid
+  shiftId        String?   @map("shift_id") @db.Uuid
+  effectiveFrom  DateTime  @map("effective_from") @db.Date
+  effectiveTo    DateTime? @map("effective_to") @db.Date
+  changeReason   String?   @map("change_reason")
+  createdById    String?   @map("created_by_id") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  employee     Employee           @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  workSchedule WorkSchedule       @relation(fields: [workScheduleId], references: [id], onDelete: Restrict)
+  shift        Shift?             @relation(fields: [shiftId], references: [id], onDelete: Restrict)
+  createdBy    User?              @relation("ScheduleAssignmentCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  records      AttendanceRecord[]
+
+  @@unique([employeeId, effectiveFrom])
+  @@index([employeeId, effectiveFrom, effectiveTo])
+  @@map("employee_schedule_assignments")
+}
+
+/// One row per employee per scheduled work date. For an overnight shift the work
+/// date is the local date on which the shift starts.
+model AttendanceRecord {
+  id                   String           @id @default(uuid()) @db.Uuid
+  employeeId           String           @map("employee_id") @db.Uuid
+  scheduleAssignmentId String?          @map("schedule_assignment_id") @db.Uuid
+  workScheduleId       String?          @map("work_schedule_id") @db.Uuid
+  shiftId              String?          @map("shift_id") @db.Uuid
+  workDate             DateTime         @map("work_date") @db.Date
+  timezone             String
+  scheduledStartAt     DateTime         @map("scheduled_start_at")
+  scheduledEndAt       DateTime         @map("scheduled_end_at")
+  expectedBreakMinutes Int              @default(0) @map("expected_break_minutes")
+  graceLateMinutes     Int              @default(0) @map("grace_late_minutes")
+  graceEarlyMinutes    Int              @default(0) @map("grace_early_minutes")
+  clockInAt            DateTime?        @map("clock_in_at")
+  clockOutAt           DateTime?        @map("clock_out_at")
+  status               AttendanceStatus @default(INCOMPLETE)
+  lateMinutes          Int              @default(0) @map("late_minutes")
+  earlyLeaveMinutes    Int              @default(0) @map("early_leave_minutes")
+  workedMinutes        Int              @default(0) @map("worked_minutes")
+  breakMinutesTaken    Int              @default(0) @map("break_minutes_taken")
+  isCorrected          Boolean          @default(false) @map("is_corrected")
+  createdAt            DateTime         @default(now()) @map("created_at")
+  updatedAt            DateTime         @updatedAt @map("updated_at")
+
+  employee     Employee                    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  assignment   EmployeeScheduleAssignment? @relation(fields: [scheduleAssignmentId], references: [id], onDelete: SetNull)
+  workSchedule WorkSchedule?               @relation(fields: [workScheduleId], references: [id], onDelete: SetNull)
+  shift        Shift?                      @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  breaks       AttendanceBreak[]
+  corrections  AttendanceCorrection[]
+
+  @@unique([employeeId, workDate])
+  @@index([workDate, status])
+  @@index([employeeId, workDate])
+  @@index([scheduleAssignmentId])
+  @@map("attendance_records")
+}
+
+model AttendanceBreak {
+  id                 String    @id @default(uuid()) @db.Uuid
+  attendanceRecordId String    @map("attendance_record_id") @db.Uuid
+  startedAt          DateTime  @map("started_at")
+  endedAt            DateTime? @map("ended_at")
+  createdById        String?   @map("created_by_id") @db.Uuid
+  createdAt          DateTime  @default(now()) @map("created_at")
+
+  attendance AttendanceRecord @relation(fields: [attendanceRecordId], references: [id], onDelete: Cascade)
+  createdBy  User?            @relation("AttendanceBreakCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([attendanceRecordId])
+  @@map("attendance_breaks")
+}
+
+model AttendanceCorrection {
+  id                  String                     @id @default(uuid()) @db.Uuid
+  employeeId          String                     @map("employee_id") @db.Uuid
+  attendanceRecordId  String?                    @map("attendance_record_id") @db.Uuid
+  workDate            DateTime                   @map("work_date") @db.Date
+  type                AttendanceCorrectionType
+  status              AttendanceCorrectionStatus @default(PENDING)
+  originalClockInAt   DateTime?                  @map("original_clock_in_at")
+  originalClockOutAt  DateTime?                  @map("original_clock_out_at")
+  requestedClockInAt  DateTime?                  @map("requested_clock_in_at")
+  requestedClockOutAt DateTime?                  @map("requested_clock_out_at")
+  reason              String
+  reviewedById        String?                    @map("reviewed_by_id") @db.Uuid
+  reviewNotes         String?                    @map("review_notes")
+  reviewedAt          DateTime?                  @map("reviewed_at")
+  createdAt           DateTime                   @default(now()) @map("created_at")
+  updatedAt           DateTime                   @updatedAt @map("updated_at")
+
+  employee   Employee          @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  attendance AttendanceRecord? @relation(fields: [attendanceRecordId], references: [id], onDelete: Cascade)
+  reviewer   User?             @relation("AttendanceCorrectionReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([employeeId, status])
+  @@index([status, createdAt])
+  @@index([attendanceRecordId])
+  @@map("attendance_corrections")
+}
+
+model Holiday {
+  id          String       @id @default(uuid()) @db.Uuid
+  name        String
+  date        DateTime     @db.Date
+  description String?
+  type        HolidayType
+  branchId    String?      @map("branch_id") @db.Uuid
+  status      MasterStatus @default(ACTIVE)
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  branch Branch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
+
+  @@index([date, status])
+  @@index([branchId])
+  @@map("holidays")
 }

@@ -28,6 +28,22 @@ only control.
 | `employee.deactivate` | ✓ | ✓ | | | |
 | `employee.manage_documents` | ✓ | ✓ | | | |
 | `employee.manage_user_account` | ✓ | ✓ | | | |
+| `work_schedule.read` | ✓ | ✓ | ✓ | ✓ | |
+| `work_schedule.create/update/deactivate` | ✓ | ✓ | | | |
+| `shift.read` | ✓ | ✓ | ✓ | ✓ | |
+| `shift.create/update/deactivate` | ✓ | ✓ | | | |
+| `attendance.read` | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `attendance.read_all` | ✓ | ✓ | | | ✓ |
+| `attendance.read_team` | ✓ | | ✓ | | |
+| `attendance.clock_in` | ✓ | | | ✓ | |
+| `attendance.clock_out` | ✓ | | | ✓ | |
+| `attendance.manage` | ✓ | ✓ | | | |
+| `attendance.export` | ✓ | ✓ | | | ✓ |
+| `attendance_correction.read` | ✓ | ✓ | ✓ | ✓ | |
+| `attendance_correction.create` | ✓ | ✓ | | ✓ | |
+| `attendance_correction.review` | ✓ | ✓ | ✓ | | |
+| `holiday.read` | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `holiday.create/update/deactivate` | ✓ | ✓ | | | |
 
 `SUPER_ADMIN` receives the full permission catalogue. Role definitions live in
 `apps/api/src/modules/rbac/rbac.constants.ts` and are synchronized by the idempotent database seed.
@@ -50,6 +66,19 @@ is additionally constrained by `UpdateSelfEmployeeDto`, which does not declare a
 Document metadata and downloads follow the same read scope as the employee profile. Upload and delete
 require `employee.manage_documents`; a manager or employee cannot upload or delete documents even for
 their own record. Downloads are authorized per request — there is no public or signed permanent URL.
+
+## Attendance scope
+
+- `attendance.read_all` sees every record and may call the HR overview. Export additionally requires
+  `attendance.export`.
+- `attendance.read_team` sees the signed-in employee plus the full reporting subtree. Overview and
+  export are denied.
+- `attendance.read` alone resolves to the linked employee only; an unlinked account gets an empty list
+  and `404 EMPLOYEE_NOT_LINKED` from self endpoints.
+- Correction review requires both `attendance_correction.review` and employee scope; reviewing one's
+  own request is rejected with `SELF_REVIEW_FORBIDDEN`.
+- Schedule assignment writes require `work_schedule.update`; clock actions require the matching
+  `attendance.clock_in` / `attendance.clock_out` permission.
 
 ## Tests
 

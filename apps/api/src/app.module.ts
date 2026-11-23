@@ -1,4 +1,5 @@
 import { Module } from "@nestjs/common";
+import { AttendanceModule } from "./modules/attendance/attendance.module";
 import { AuditModule } from "./modules/audit/audit.module";
 import { AuthModule } from "./modules/auth/auth.module";
 import { HealthModule } from "./modules/health/health.module";
@@ -22,6 +23,7 @@ import { PrismaModule } from "./prisma/prisma.module";
     PermissionsModule,
     OrganizationModule,
     EmployeeModule,
+    AttendanceModule,
   ],
 })
 export class AppModule {}

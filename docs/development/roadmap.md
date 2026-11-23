@@ -86,14 +86,23 @@ workspaces. Docs: `docs/modules/organization.md`,
 Limitations: local disk document storage is development-only; employee photo upload and salary data
 are out of scope for this phase.
 
-### Phase 5 — Attendance
+### Phase 4 — Attendance — ✅ completed
 
-Clock-in/clock-out (idempotent, company-timezone work date), attendance list + admin view, manual
-corrections with audit, daily/monthly summary, first scheduled worker job (daily rollup) — introduces
-`@nestjs/schedule`, Redis/BullMQ only if retries are required.
+Work schedules and shifts (including overnight), effective-dated assignments, clock-in/out with
+breaks, centralized late/early/worked calculations in the company timezone, history and calendar,
+manual corrections, correction requests, holidays, HR/self dashboards, CSV export and permissions.
 
 Exit criteria: duplicate clock-in on the same work date cannot create two records; a correction
 preserves the original values and the actor.
+
+Result: met. The `(employee_id, work_date)` unique constraint plus partial unique indexes for open
+sessions/breaks/pending corrections make concurrency safe; clock-out claims the row atomically.
+`attendance.e2e-spec.ts` passes 8/8 (concurrent actions, overnight shift, manager scope, correction
+recalculation, holiday calendar, bulk assignment, export), unit suites cover the arithmetic and
+timezone edges, and web tests pass 21/21. Docs: `docs/modules/attendance.md`,
+`docs/database/phase-4-erd.md`, `docs/security/permission-matrix.md`. Limitations: no automatic
+attendance generation/rollup worker, no correction attachments or notifications, and FIFO cleanup is
+not required because no absence rows are pre-generated.
 
 ### Phase 6 — Leave
 
@@ -149,7 +158,7 @@ accessibility audit, Nginx/Docker production images, Jenkins pipeline, AWS targe
 
 ## Recommended next step
 
-**Phase 3 — Organization** (branches, departments, positions) is unblocked: Phase 2 gates pass and
-authentication/RBAC are in place. Do not start it until the instructions mark it active. No Phase 2
-tech debt is outstanding; the known limitations (stubbed e2e throttling, unavailable Figma references,
-bundle size warning) are documented in `technical-decisions.md`.
+**Phase 5 — Leave** is next and is not authorized yet. Phase 4 attendance is complete and verified;
+wait for explicit approval before starting leave quotas, balances, requests or the approval workflow.
+Known limitations (stubbed e2e throttling, unavailable Figma references, bundle size warning,
+development-only document storage) remain documented in `technical-decisions.md` and the module docs.

@@ -1,5 +1,6 @@
 import { config } from "dotenv";
 import argon2 from "argon2";
+import { DateTime } from "luxon";
 import { createPrismaClient } from "@peopleops/database";
 import { ROLE_CODES, type RoleCode } from "@peopleops/shared-types";
 
@@ -237,6 +238,206 @@ async function main(): Promise<void> {
             jobLevelId: employee.jobLevelId,
             managerId: employee.managerId,
             changeReason: "Initial employment",
+          },
+        });
+      }
+    }
+
+    // Attendance demo: a standard weekday schedule, a night shift, effective-dated
+    // assignments, holidays, and a short attendance history for the employee login.
+    const timezone = "Asia/Jakarta";
+    const schedule = await prisma.workSchedule.upsert({
+      where: { code: "WS-STANDARD" },
+      update: {},
+      create: {
+        name: "Standard Weekday",
+        code: "WS-STANDARD",
+        description: "Monday to Friday, 08:00–17:00 with a one-hour break",
+        graceLateMinutes: 10,
+        graceEarlyMinutes: 5,
+      },
+    });
+
+    for (let dayOfWeek = 1; dayOfWeek <= 7; dayOfWeek += 1) {
+      const working = dayOfWeek <= 5;
+      await prisma.workScheduleDay.upsert({
+        where: { scheduleId_dayOfWeek: { scheduleId: schedule.id, dayOfWeek } },
+        update: {},
+        create: {
+          scheduleId: schedule.id,
+          dayOfWeek,
+          isWorkingDay: working,
+          startTime: working ? "08:00" : null,
+          endTime: working ? "17:00" : null,
+          breakMinutes: working ? 60 : 0,
+        },
+      });
+    }
+
+    await prisma.shift.upsert({
+      where: { code: "SHIFT-NIGHT" },
+      update: {},
+      create: {
+        name: "Night Shift",
+        code: "SHIFT-NIGHT",
+        description: "22:00–06:00 across midnight",
+        startTime: "22:00",
+        endTime: "06:00",
+        breakMinutes: 30,
+        graceLateMinutes: 10,
+        graceEarlyMinutes: 5,
+      },
+    });
+
+    const nightShift = await prisma.shift.findUniqueOrThrow({
+      where: { code: "SHIFT-NIGHT" },
+    });
+    const assignments: { employeeNumber: string; shiftId: string | null }[] = [
+      { employeeNumber: "EMP-0001", shiftId: null },
+      { employeeNumber: "EMP-0002", shiftId: null },
+      { employeeNumber: "EMP-0003", shiftId: nightShift.id },
+      { employeeNumber: "EMP-0004", shiftId: null },
+    ];
+    for (const assignment of assignments) {
+      const employee = await prisma.employee.findUniqueOrThrow({
+        where: { employeeNumber: assignment.employeeNumber },
+      });
+      await prisma.employeeScheduleAssignment.upsert({
+        where: {
+          employeeId_effectiveFrom: {
+            employeeId: employee.id,
+            effectiveFrom: employee.joinDate,
+          },
+        },
+        update: {},
+        create: {
+          employeeId: employee.id,
+          workScheduleId: schedule.id,
+          shiftId: assignment.shiftId,
+          effectiveFrom: employee.joinDate,
+          changeReason: "Demo schedule assignment",
+        },
+      });
+    }
+
+    for (const holiday of [
+      { name: "Indonesian Independence Day", date: "2026-08-17", type: "NATIONAL" as const },
+      { name: "Christmas Day", date: "2026-12-25", type: "NATIONAL" as const },
+      { name: "Company Anniversary", date: "2026-10-01", type: "COMPANY" as const },
+    ]) {
+      const date = new Date(`${holiday.date}T00:00:00.000Z`);
+      const existing = await prisma.holiday.findFirst({ where: { date, branchId: null } });
+      if (!existing) {
+        await prisma.holiday.create({
+          data: {
+            name: holiday.name,
+            date,
+            type: holiday.type,
+            status: "ACTIVE",
+          },
+        });
+      }
+    }
+
+    const sampleEmployee = await prisma.employee.findUniqueOrThrow({
+      where: { employeeNumber: "EMP-0002" },
+    });
+    const sampleAssignment = await prisma.employeeScheduleAssignment.findFirstOrThrow({
+      where: { employeeId: sampleEmployee.id },
+      orderBy: { effectiveFrom: "desc" },
+    });
+    const sampleDays: string[] = [];
+    let cursor = DateTime.now().setZone(timezone).startOf("day");
+    while (sampleDays.length < 3) {
+      cursor = cursor.minus({ days: 1 });
+      if (cursor.weekday <= 5) sampleDays.push(cursor.toFormat("yyyy-MM-dd"));
+    }
+
+    const samples = [
+      { in: "08:24", out: "17:02", status: "LATE" as const, late: 14, early: 0, worked: 458 },
+      { in: "08:02", out: "16:40", status: "EARLY_LEAVE" as const, late: 0, early: 15, worked: 458 },
+      { in: "08:01", out: "17:05", status: "PRESENT" as const, late: 0, early: 0, worked: 484 },
+    ];
+
+    for (let index = 0; index < sampleDays.length; index += 1) {
+      const day = sampleDays[index]!;
+      const sample = samples[index]!;
+      const workDate = new Date(`${day}T00:00:00.000Z`);
+      const startAt = DateTime.fromISO(`${day}T${sample.in}`, { zone: timezone }).toUTC().toJSDate();
+      const endAt = DateTime.fromISO(`${day}T${sample.out}`, { zone: timezone }).toUTC().toJSDate();
+      const scheduledStartAt = DateTime.fromISO(`${day}T08:00`, { zone: timezone })
+        .toUTC()
+        .toJSDate();
+      const scheduledEndAt = DateTime.fromISO(`${day}T17:00`, { zone: timezone })
+        .toUTC()
+        .toJSDate();
+
+      const existing = await prisma.attendanceRecord.findUnique({
+        where: {
+          employeeId_workDate: { employeeId: sampleEmployee.id, workDate },
+        },
+      });
+      if (!existing) {
+        await prisma.attendanceRecord.create({
+          data: {
+            employeeId: sampleEmployee.id,
+            scheduleAssignmentId: sampleAssignment.id,
+            workScheduleId: schedule.id,
+            workDate,
+            timezone,
+            scheduledStartAt,
+            scheduledEndAt,
+            expectedBreakMinutes: 60,
+            graceLateMinutes: 10,
+            graceEarlyMinutes: 5,
+            clockInAt: startAt,
+            clockOutAt: endAt,
+            status: sample.status,
+            lateMinutes: sample.late,
+            earlyLeaveMinutes: sample.early,
+            workedMinutes: sample.worked,
+            breakMinutesTaken: 60,
+            breaks: {
+              create: {
+                startedAt: DateTime.fromISO(`${day}T12:00`, { zone: timezone })
+                  .toUTC()
+                  .toJSDate(),
+                endedAt: DateTime.fromISO(`${day}T13:00`, { zone: timezone })
+                  .toUTC()
+                  .toJSDate(),
+              },
+            },
+          },
+        });
+      }
+    }
+
+    const latestDay = sampleDays[0];
+    if (latestDay) {
+      const workDate = new Date(`${latestDay}T00:00:00.000Z`);
+      const existing = await prisma.attendanceCorrection.findFirst({
+        where: { employeeId: sampleEmployee.id, workDate, status: "PENDING" },
+      });
+      if (!existing) {
+        const requestedClockIn = DateTime.fromISO(`${latestDay}T08:15`, { zone: timezone })
+          .toUTC()
+          .toJSDate();
+        const requestedClockOut = DateTime.fromISO(`${latestDay}T17:02`, { zone: timezone })
+          .toUTC()
+          .toJSDate();
+        await prisma.attendanceCorrection.create({
+          data: {
+            employeeId: sampleEmployee.id,
+            workDate,
+            type: "CLOCK_IN",
+            status: "PENDING",
+            requestedClockInAt: requestedClockIn,
+            requestedClockOutAt: requestedClockOut,
+            originalClockInAt: DateTime.fromISO(`${latestDay}T08:24`, { zone: timezone })
+              .toUTC()
+              .toJSDate(),
+            originalClockOutAt: requestedClockOut,
+            reason: "Traffic made me arrive later than my actual start time.",
           },
         });
       }

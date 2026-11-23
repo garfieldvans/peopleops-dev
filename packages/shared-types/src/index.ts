@@ -85,6 +85,28 @@ export const PERMISSIONS = {
   EMPLOYEE_READ_TEAM: "employee.read_team",
   EMPLOYEE_READ_SELF: "employee.read_self",
   EMPLOYEE_UPDATE_SELF: "employee.update_self",
+  WORK_SCHEDULE_READ: "work_schedule.read",
+  WORK_SCHEDULE_CREATE: "work_schedule.create",
+  WORK_SCHEDULE_UPDATE: "work_schedule.update",
+  WORK_SCHEDULE_DEACTIVATE: "work_schedule.deactivate",
+  SHIFT_READ: "shift.read",
+  SHIFT_CREATE: "shift.create",
+  SHIFT_UPDATE: "shift.update",
+  SHIFT_DEACTIVATE: "shift.deactivate",
+  ATTENDANCE_READ: "attendance.read",
+  ATTENDANCE_READ_ALL: "attendance.read_all",
+  ATTENDANCE_READ_TEAM: "attendance.read_team",
+  ATTENDANCE_CLOCK_IN: "attendance.clock_in",
+  ATTENDANCE_CLOCK_OUT: "attendance.clock_out",
+  ATTENDANCE_MANAGE: "attendance.manage",
+  ATTENDANCE_EXPORT: "attendance.export",
+  ATTENDANCE_CORRECTION_READ: "attendance_correction.read",
+  ATTENDANCE_CORRECTION_CREATE: "attendance_correction.create",
+  ATTENDANCE_CORRECTION_REVIEW: "attendance_correction.review",
+  HOLIDAY_READ: "holiday.read",
+  HOLIDAY_CREATE: "holiday.create",
+  HOLIDAY_UPDATE: "holiday.update",
+  HOLIDAY_DEACTIVATE: "holiday.deactivate",
 } as const;
 
 export type PermissionCode = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -403,4 +425,247 @@ export interface EmployeeDocument {
   sizeBytes: number;
   uploadedBy: { id: string; name: string } | null;
   createdAt: string;
+}
+
+// ---------------------------------------------------------------------------
+// Attendance
+// ---------------------------------------------------------------------------
+
+export type AttendanceStatus =
+  | "PRESENT"
+  | "LATE"
+  | "EARLY_LEAVE"
+  | "LATE_AND_EARLY_LEAVE"
+  | "ABSENT"
+  | "HALF_DAY"
+  | "INCOMPLETE";
+export const ATTENDANCE_STATUSES: readonly AttendanceStatus[] = [
+  "PRESENT",
+  "LATE",
+  "EARLY_LEAVE",
+  "LATE_AND_EARLY_LEAVE",
+  "ABSENT",
+  "HALF_DAY",
+  "INCOMPLETE",
+];
+
+export type AttendanceCorrectionStatus = "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
+export const ATTENDANCE_CORRECTION_STATUSES: readonly AttendanceCorrectionStatus[] = [
+  "PENDING",
+  "APPROVED",
+  "REJECTED",
+  "CANCELLED",
+];
+
+export type AttendanceCorrectionType = "CLOCK_IN" | "CLOCK_OUT" | "BOTH";
+export const ATTENDANCE_CORRECTION_TYPES: readonly AttendanceCorrectionType[] = [
+  "CLOCK_IN",
+  "CLOCK_OUT",
+  "BOTH",
+];
+
+export type HolidayType = "NATIONAL" | "COMPANY" | "BRANCH";
+export const HOLIDAY_TYPES: readonly HolidayType[] = ["NATIONAL", "COMPANY", "BRANCH"];
+
+export interface WorkScheduleDay {
+  id: string;
+  dayOfWeek: number;
+  isWorkingDay: boolean;
+  startTime: string | null;
+  endTime: string | null;
+  breakMinutes: number;
+}
+
+export interface WorkSchedule {
+  id: string;
+  name: string;
+  code: string;
+  description: string | null;
+  graceLateMinutes: number;
+  graceEarlyMinutes: number;
+  status: MasterStatus;
+  days: WorkScheduleDay[];
+  assignmentCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Shift {
+  id: string;
+  name: string;
+  code: string;
+  description: string | null;
+  startTime: string;
+  endTime: string;
+  breakMinutes: number;
+  graceLateMinutes: number;
+  graceEarlyMinutes: number;
+  status: MasterStatus;
+  assignmentCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ShiftRef {
+  id: string;
+  name: string;
+  code: string;
+}
+
+export interface ScheduleRef {
+  id: string;
+  name: string;
+  code: string;
+}
+
+export interface BulkAssignmentResult {
+  assigned: number;
+  employeeIds: string[];
+}
+
+export interface EmployeeScheduleAssignment {
+  id: string;
+  employeeId: string;
+  employee: { id: string; employeeNumber: string; fullName: string };
+  workSchedule: ScheduleRef;
+  shift: ShiftRef | null;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+  changeReason: string | null;
+  createdAt: string;
+}
+
+export interface AttendanceBreak {
+  id: string;
+  startedAt: string;
+  endedAt: string | null;
+  durationMinutes: number | null;
+}
+
+export interface AttendanceRecord {
+  id: string;
+  employeeId: string;
+  employeeNumber: string;
+  employeeName: string;
+  branch: NamedRef | null;
+  department: NamedRef | null;
+  position: NamedRef | null;
+  workDate: string;
+  timezone: string;
+  workSchedule: ScheduleRef | null;
+  shift: ShiftRef | null;
+  scheduledStartAt: string;
+  scheduledEndAt: string;
+  scheduledStartLocal: string;
+  scheduledEndLocal: string;
+  clockInAt: string | null;
+  clockOutAt: string | null;
+  clockInLocal: string | null;
+  clockOutLocal: string | null;
+  expectedBreakMinutes: number;
+  graceLateMinutes: number;
+  graceEarlyMinutes: number;
+  status: AttendanceStatus;
+  lateMinutes: number;
+  earlyLeaveMinutes: number;
+  workedMinutes: number;
+  breakMinutesTaken: number;
+  isCorrected: boolean;
+  hasPendingCorrection: boolean;
+  breaks: AttendanceBreak[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type AttendanceDayStatus = AttendanceStatus | "HOLIDAY" | "OFF" | "NO_RECORD";
+
+export interface AttendanceCalendarDay {
+  date: string;
+  dayOfWeek: number;
+  status: AttendanceDayStatus;
+  holiday: { id: string; name: string; type: HolidayType } | null;
+  record: AttendanceRecord | null;
+}
+
+export interface AttendanceCalendar {
+  month: string;
+  timezone: string;
+  days: AttendanceCalendarDay[];
+  summary: {
+    present: number;
+    late: number;
+    incomplete: number;
+    off: number;
+    holiday: number;
+  };
+}
+
+export type AttendanceTodayState =
+  | "NOT_CLOCKED_IN"
+  | "WORKING"
+  | "ON_BREAK"
+  | "CLOCKED_OUT"
+  | "DAY_OFF"
+  | "HOLIDAY"
+  | "NO_EMPLOYEE";
+
+export interface AttendanceDashboard {
+  date: string;
+  timezone: string;
+  employee: { id: string; employeeNumber: string; fullName: string };
+  state: AttendanceTodayState;
+  schedule: {
+    workSchedule: ScheduleRef;
+    shift: ShiftRef | null;
+    scheduledStartLocal: string;
+    scheduledEndLocal: string;
+  } | null;
+  holiday: { id: string; name: string; type: HolidayType } | null;
+  record: AttendanceRecord | null;
+  pendingCorrections: number;
+}
+
+export interface AttendanceOverview {
+  date: string;
+  timezone: string;
+  scheduledEmployees: number;
+  present: number;
+  late: number;
+  absent: number;
+  incomplete: number;
+  pendingCorrections: number;
+}
+
+export interface AttendanceCorrection {
+  id: string;
+  employeeId: string;
+  employeeNumber: string;
+  employeeName: string;
+  attendanceRecordId: string | null;
+  workDate: string;
+  type: AttendanceCorrectionType;
+  status: AttendanceCorrectionStatus;
+  originalClockInLocal: string | null;
+  originalClockOutLocal: string | null;
+  requestedClockInLocal: string | null;
+  requestedClockOutLocal: string | null;
+  reason: string;
+  reviewer: { id: string; name: string } | null;
+  reviewNotes: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Holiday {
+  id: string;
+  name: string;
+  date: string;
+  description: string | null;
+  type: HolidayType;
+  branchId: string | null;
+  branch: NamedRef | null;
+  status: MasterStatus;
+  createdAt: string;
+  updatedAt: string;
 }

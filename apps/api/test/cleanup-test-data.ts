@@ -19,6 +19,9 @@ async function main(): Promise<void> {
     await prisma.employee.deleteMany({
       where: { employeeNumber: { startsWith: "E2E-" } },
     });
+    await prisma.holiday.deleteMany({ where: { name: { startsWith: "E2E " } } });
+    await prisma.shift.deleteMany({ where: { code: { startsWith: "E2E-" } } });
+    await prisma.workSchedule.deleteMany({ where: { code: { startsWith: "E2E-" } } });
     await prisma.position.deleteMany({ where: { code: { startsWith: "E2E-" } } });
     await prisma.department.deleteMany({ where: { code: { startsWith: "E2E-" } } });
     await prisma.branch.deleteMany({ where: { code: { startsWith: "E2E-" } } });

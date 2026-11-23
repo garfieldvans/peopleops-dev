@@ -7,6 +7,14 @@ import {
   RequireAuth,
   RequirePermission,
 } from "../features/auth/require-auth";
+import { AttendanceCorrectionsPage } from "../features/attendance/attendance-corrections-page";
+import { AttendanceDetailPage } from "../features/attendance/attendance-detail-page";
+import { AttendanceManagementPage } from "../features/attendance/attendance-management-page";
+import { EmployeeSchedulesPage } from "../features/attendance/employee-schedules-page";
+import { HolidaysPage } from "../features/attendance/holidays-page";
+import { MyAttendancePage } from "../features/attendance/my-attendance-page";
+import { ShiftsPage } from "../features/attendance/shifts-page";
+import { WorkSchedulesPage } from "../features/attendance/work-schedules-page";
 import { DashboardPage } from "../features/dashboard/dashboard-page";
 import { EmployeeDetailPage } from "../features/employees/employee-detail-page";
 import { EmployeeFormPage } from "../features/employees/employee-form-page";
@@ -88,6 +96,75 @@ export function App() {
               element={
                 <RequirePermission permission={PERMISSIONS.EMPLOYEE_UPDATE}>
                   <EmployeeFormPage mode="edit" />
+                </RequirePermission>
+              }
+            />
+            <Route
+              path="attendance"
+              element={
+                <RequireAnyPermission
+                  permissions={[
+                    PERMISSIONS.ATTENDANCE_READ_ALL,
+                    PERMISSIONS.ATTENDANCE_READ_TEAM,
+                  ]}
+                >
+                  <AttendanceManagementPage />
+                </RequireAnyPermission>
+              }
+            />
+            <Route
+              path="attendance/me"
+              element={
+                <RequirePermission permission={PERMISSIONS.ATTENDANCE_READ}>
+                  <MyAttendancePage />
+                </RequirePermission>
+              }
+            />
+            <Route
+              path="attendance/schedules"
+              element={
+                <RequirePermission permission={PERMISSIONS.WORK_SCHEDULE_READ}>
+                  <WorkSchedulesPage />
+                </RequirePermission>
+              }
+            />
+            <Route
+              path="attendance/shifts"
+              element={
+                <RequirePermission permission={PERMISSIONS.SHIFT_READ}>
+                  <ShiftsPage />
+                </RequirePermission>
+              }
+            />
+            <Route
+              path="attendance/assignments"
+              element={
+                <RequirePermission permission={PERMISSIONS.EMPLOYEE_READ}>
+                  <EmployeeSchedulesPage />
+                </RequirePermission>
+              }
+            />
+            <Route
+              path="attendance/corrections"
+              element={
+                <RequirePermission permission={PERMISSIONS.ATTENDANCE_CORRECTION_READ}>
+                  <AttendanceCorrectionsPage />
+                </RequirePermission>
+              }
+            />
+            <Route
+              path="attendance/holidays"
+              element={
+                <RequirePermission permission={PERMISSIONS.HOLIDAY_READ}>
+                  <HolidaysPage />
+                </RequirePermission>
+              }
+            />
+            <Route
+              path="attendance/:id"
+              element={
+                <RequirePermission permission={PERMISSIONS.ATTENDANCE_READ}>
+                  <AttendanceDetailPage />
                 </RequirePermission>
               }
             />
