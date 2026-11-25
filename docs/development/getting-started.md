@@ -27,7 +27,7 @@ Verify:
 - API health: <http://localhost:3001/api/v1/health> → `200` with `checks.database.status: "up"`
 - Swagger UI: <http://localhost:3001/api/docs>
 - Web app: <http://localhost:5173> → system status card, theme toggle, Nemo UI components
-- Worker: `pnpm --filter @peopleops/worker start:prod` → logs `Database reachable` and the scheduled leave/overtime jobs, then stays running
+- Worker: `pnpm --filter @peopleops/worker start:prod` → logs `Database reachable` and the scheduled leave/overtime/payroll jobs, then stays running
 
 If something else already listens on 3000/3001/5173, change `PORT` and `VITE_DEV_API_TARGET` in `.env`
 and start Vite with another port (`pnpm --filter @peopleops/web exec vite --port 5174`).
@@ -136,14 +136,16 @@ refresh cookie with reuse detection, users/roles/permissions modules, global aut
 guards, origin check, login throttling, audit log, seed, web login page, session bootstrap,
 protected routing and permission-aware navigation, Users and Roles screens.
 
-Phases 3–6 (completed): organization (company, branches, departments, positions, job levels) and
+Phases 3–7 (completed): organization (company, branches, departments, positions, job levels) and
 employees; attendance with schedules, shifts, holidays, corrections, calendar, dashboard and export;
 leave with policies, assignments, balances, requests, approvals, attachments, calendar, reports and
 daily accrual/expiry jobs; overtime with policies, assignments, approvals, actual/verified minutes,
-corrections, attachments, reports, export and daily housekeeping.
+corrections, attachments, reports, export and daily housekeeping; payroll with compensation history,
+components, assignments, periods, runs, Decimal calculation, adjustments, approval/publication,
+immutable payslip snapshots, PDF payslips, reports, and daily read-only housekeeping.
 
-Not implemented (later phases): payroll, performance/learning, notifications, Redis, Kafka, Socket.IO,
+Not implemented (later phases): performance/learning, notifications, Redis, Kafka, Socket.IO,
 Nginx, Jenkins, deployment assets.
 
-Tests: `pnpm test` (API unit + web Vitest) and `pnpm --filter @peopleops/api test:e2e` (auth, RBAC and
-users/roles flows against the `peopleops_test` schema).
+Tests: `pnpm test` (API unit + web Vitest) and `pnpm --filter @peopleops/api test:e2e` (auth, RBAC,
+employees, attendance, leave, overtime, and payroll flows against the `peopleops_test` schema).

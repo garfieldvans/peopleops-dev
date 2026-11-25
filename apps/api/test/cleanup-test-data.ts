@@ -32,7 +32,21 @@ async function main(): Promise<void> {
       where: { OR: [{ employee: { employeeNumber: { startsWith: "E2E-" } } }] },
     });
     await prisma.leavePolicy.deleteMany({ where: { code: { startsWith: "E2E-" } } });
-    await prisma.leaveType.deleteMany({ where: { code: { startsWith: "E2E_" } } });
+    await prisma.leaveType.deleteMany({
+      where: { OR: [{ code: { startsWith: "E2E-" } }, { code: { startsWith: "E2E_" } }] },
+    });
+
+    // Payroll payslips and adjustments use Restrict on employees and periods.
+    await prisma.payrollSource.deleteMany({});
+    await prisma.payrollLine.deleteMany({});
+    await prisma.payrollPayslip.deleteMany({});
+    await prisma.payrollRunApproval.deleteMany({});
+    await prisma.payrollRun.deleteMany({});
+    await prisma.payrollAdjustment.deleteMany({});
+    await prisma.employeePayrollAssignment.deleteMany({});
+    await prisma.employeeCompensation.deleteMany({});
+    await prisma.payrollPeriod.deleteMany({});
+    await prisma.payrollComponent.deleteMany({ where: { code: { startsWith: "E2E" } } });
 
     // Overtime rows also use Restrict on employees.
     await prisma.overtimeApproval.deleteMany({});

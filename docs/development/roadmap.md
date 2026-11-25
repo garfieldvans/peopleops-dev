@@ -1,7 +1,7 @@
 # PeopleOps — Development Roadmap
 
-Status: Phases 1–6 are complete, including attendance, leave, and overtime management. Nothing
-beyond Phase 6 is authorized until the next phase is explicitly approved.
+Status: Phases 1–7 are complete, including attendance, leave, overtime, and payroll management.
+Nothing beyond Phase 7 is authorized until the next phase is explicitly approved.
 
 ## Definition of done (applies to every phase)
 
@@ -22,7 +22,7 @@ beyond Phase 6 is authorized until the next phase is explicitly approved.
             ├── 4 Attendance (done)
             └── 5 Leave (done)
                 └── 6 Overtime (done, uses attendance + leave)
-                    └── 7 Payroll (needs 4, 5, 6)
+                    └── 7 Payroll (done, needs 4, 5, 6)
                         ├── 8 Performance / Learning
                         └── 9 Notifications + Reports
                             └── 10 Hardening & deployment
@@ -145,11 +145,30 @@ warning threshold. Limitations: verification is manual; no statutory multipliers
 calculation; no notification job; the worker only reports stale requests; attachments are private
 but not browser-tested.
 
-### Phase 7 — Payroll
+### Phase 7 — Payroll — ✅ completed
 
-Salary components, periods, payroll run (draft → published → closed), payslip generation with
-snapshot lines, immutable published results + adjustment flow, employee payslip view, export.
-Jurisdiction rules (tax/BPJS) require an explicit later decision.
+Compensation history, configurable earning/deduction/employer/informational components,
+effective-dated assignments, periods, single active run per period, deterministic Decimal
+calculation, attendance/unpaid-leave/verified-overtime sources, reviewed adjustments, approval and
+publication workflow, immutable payslip snapshots, on-demand PDF payslips, reports with a paginated
+register, and 15 functional payroll screens (some screens are combined in one route with tabs/dialogs).
+
+Exit criteria: payroll is reproducible from stored snapshots; published payslips cannot be rewritten;
+recalculation increments the version; only approved adjustments apply; source integration reads
+attendance, approved unpaid leave, and `VERIFIED` overtime; unauthorized users cannot read salary
+data or another employee's payslip.
+
+Result: met. API unit 41/41 (5 payroll utility tests), web 38/38 (4 payroll screen tests), API e2e
+49/49 including 8 payroll tests (duplicate run, fixed earnings, approved-only adjustments and
+versioning, review/approve/publish, snapshot stability, attendance/leave/overtime sources, paginated
+register with range-wide totals, and self-only payslip/PDF access). Typecheck, lint, build, 10
+migrations, seed, and worker smoke all pass. Docs: `docs/payroll/domain-analysis.md`, `business-rules.md`, `payroll-workflow.md`,
+`calculation-rules.md`, `permission-matrix.md`, `api.md`, `testing.md`.
+
+Limitations: calculation is synchronous (the worker performs read-only housekeeping); PDFs are
+generated on demand; statutory tax/BPJS/THR, loans, reimbursements, bank transfer, and accounting
+journals remain explicitly out of scope; source-based components are global configuration rather
+than per-employee assignments.
 
 ### Phase 8 — Performance and Learning
 
@@ -175,16 +194,17 @@ accessibility audit, Nginx/Docker production images, Jenkins pipeline, AWS targe
 | Very new Node (26) and TS 7 line                                         | Tooling incompatibility               | Pin TS 5.9.3; Prisma supports Node ≥24; CI on Node 24 LTS                                          |
 | Tailwind 4 + Nemo CSS variables overlap                                  | Inconsistent styling                  | Tailwind for layout only; tokens for visuals (ADR-003)                                             |
 | Attendance/timezone correctness                                          | Wrong work dates, payroll errors      | UTC storage + company timezone config; explicit tests around midnight                              |
-| Payroll statutory rules unspecified                                      | Rework risk                           | Keep calculation components configurable; confirm jurisdiction before Phase 8                      |
+| Payroll statutory rules unspecified                                      | Rework risk                           | Keep calculation components configurable; confirm jurisdiction before any statutory scope           |
 | No Figma/inventory access to charts                                      | Dashboard gaps                        | Defer charts to a dedicated decision in Phase 10                                                   |
 | Two validation sources (DTO + Zod)                                       | Drift                                 | Shared types package + contract tests in the API e2e suite                                         |
 
 ## Recommended next step
 
-**Phase 7 — Payroll** is the next logical scope, but it is not authorized. Phase 6 overtime now
-exposes verified minutes as the payroll contract; payroll should consume only `VERIFIED` requests and
-must not recalculate overtime from raw attendance. Statutory multipliers, PPh 21, BPJS, THR, and
-salary disbursement remain explicitly out of scope until a jurisdiction and written scope are
-approved. Known limitations (manual verification, no notification worker, stubbed e2e throttling,
-unavailable Figma references, development-only document storage, and half-day
-attendance recalculation) remain documented in `technical-decisions.md` and the module docs.
+**Phase 8 — Performance and Learning** is the next logical scope, but it is not authorized until the
+user explicitly starts it. Before Phase 8, confirm whether payroll needs per-employee source-based
+component assignments, asynchronous calculation/PDF jobs, or a jurisdiction-specific statutory
+scope. Statutory multipliers, PPh 21, BPJS, THR, loans, reimbursements, bank transfer, and salary
+disbursement remain explicitly out of scope. Known limitations (manual overtime verification, no
+notification worker, stubbed e2e throttling, unavailable Figma references, development-only document
+storage, and half-day attendance recalculation) remain documented in `technical-decisions.md` and
+the module docs.

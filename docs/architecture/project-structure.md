@@ -1,6 +1,6 @@
 # PeopleOps — Project Structure
 
-Status: as built through Phase 6. The layout below is the current repository structure; historical
+Status: as built through Phase 7. The layout below is the current repository structure; historical
 phase notes remain where they explain a decision.
 
 ## 1. Top level

@@ -2,15 +2,15 @@
 
 Single-company HRIS — one company, its branches, departments, positions, employees and HR operations.
 
-> Status: **Phases 1–6 complete** — foundation, authentication/RBAC, organization and employees,
-> attendance, leave, and overtime. Payroll and later phases are not started.
+> Status: **Phases 1–7 complete** — foundation, authentication/RBAC, organization and employees,
+> attendance, leave, overtime, and payroll. Performance/learning and later phases are not started.
 
 ## Stack
 
 - **Web**: React 19, TypeScript, Vite 8, Tailwind CSS 4, TanStack Query, Zustand, React Hook Form, Zod
 - **UI**: [`@nemo-ui/ui`](https://www.npmjs.com/package/@nemo-ui/ui) (verified 0.1.0)
 - **API**: NestJS 12 (modular monolith), Prisma 7 + PostgreSQL 16, class-validator, Swagger
-- **Worker**: NestJS standalone process for daily leave accrual/expiry and overtime housekeeping
+- **Worker**: NestJS standalone process for daily leave accrual/expiry, overtime housekeeping, and payroll stale-run housekeeping
 - **Auth**: Argon2id credentials, 15-minute JWT access token in memory, rotating refresh cookie with
   reuse detection, permission-based RBAC, audit log
 - **Tooling**: pnpm workspace, TypeScript 5.9 strict, ESLint 10, Prettier, Jest + Vitest, Docker Compose
@@ -49,6 +49,10 @@ Ports are configurable in `.env` (`PORT`, `VITE_DEV_API_TARGET`). Full details, 
 | [`docs/modules/attendance.md`](docs/modules/attendance.md) | Attendance, schedules, shifts, holidays, corrections |
 | [`docs/modules/leave.md`](docs/modules/leave.md) | Leave policies, balances, requests, approvals |
 | [`docs/overtime/domain-analysis.md`](docs/overtime/domain-analysis.md) | Overtime domain, workflow, API, permissions, testing |
+| [`docs/payroll/domain-analysis.md`](docs/payroll/domain-analysis.md) | Payroll domain, boundaries, entities, lifecycle |
+| [`docs/payroll/calculation-rules.md`](docs/payroll/calculation-rules.md) | Decimal rules, source integration, totals |
+| [`docs/payroll/api.md`](docs/payroll/api.md) | Payroll endpoints, permissions, error codes |
+| [`docs/payroll/testing.md`](docs/payroll/testing.md) | Payroll test coverage and validation results |
 
 ## Scripts
 

@@ -1,12 +1,11 @@
 # PeopleOps — Initial Database Design (ERD Proposal)
 
-Status: updated after Phase 6. The schema is implemented through overtime management; later
-sections remain design targets. Overtime migrations are
-`20261125131108_overtime_management`, `20261125152452_overtime_overlap_index`, and
-`20261126120000_overtime_integrity_checks`.
+Status: updated after Phase 7. The schema is implemented through payroll management; later sections
+remain design targets. Payroll migration is `20261125180853_payroll_management`.
 
 Database: PostgreSQL. Naming: tables `snake_case` plural, PK `id uuid` (`gen_random_uuid()`),
-timestamps `created_at` / `updated_at` `timestamptz` UTC. Money: `numeric(14,2)`.
+timestamps `created_at` / `updated_at` `timestamptz` UTC. Money: `numeric(18,2)` for payroll,
+`numeric(14,2)` for earlier salary fields; quantities/rates use `numeric(18,4/6)`.
 
 ## 1. Core ERD (auth → organization → employees)
 
@@ -158,17 +157,23 @@ a future option if a later phase needs shared delegation or multi-subject routin
 
 ## 6. Payroll
 
-| Table                 | Key columns                                                                                                                | Notes                                                                                                            |
-| --------------------- | -------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `salary_components`   | `code UK`, `name`, `type` (`earning`/`deduction`), `is_taxable`, `is_fixed`                                                | Configuration                                                                                                    |
-| `payroll_periods`     | `year`, `month`, `status` (`draft`/`processing`/`published`/`closed`), `cutoff_date`                                       | **Unique `(year, month)`**                                                                                       |
-| `payslips`            | `payroll_period_id`, `employee_id`, `gross numeric(14,2)`, `total_deductions`, `net`, `currency`, `status`, `published_at` | **Unique `(payroll_period_id, employee_id)`**                                                                    |
-| `payslip_lines`       | `payslip_id`, `salary_component_id`, `description`, `amount`, `quantity`, `rate`                                           | Snapshot of calculated values, not references to live salary data                                                |
-| `payslip_adjustments` | `payslip_id`, `type`, `amount`, `reason`, `created_by`, `approved_by`                                                      | Corrections to published payroll are separate, traceable records — published payslips are never silently mutated |
+| Table                            | Key columns                                                                                                                                                                                                 | Notes                                                                                                                      |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `payroll_settings`               | singleton row, `standard_monthly_hours`, `standard_monthly_days`, `rounding_mode`, `currency_scale`                                                                                                         | Seeded once; copied into each run so later edits do not rewrite a run                                                     |
+| `employee_compensations`         | `employee_id`, `base_salary Decimal(18,2)`, `currency`, `payment_frequency`, `effective_from`, `effective_to`, `status`                                                                                      | Active ranges per employee protected by exclusion constraint `employee_compensations_no_overlap`                           |
+| `payroll_components`             | `code UK`, `name`, `component_type`, `calculation_type`, `default_amount`, `percentage`, `rate_multiplier`, `source_type`, `is_taxable`, `is_recurring`, `is_active`, `effective_from/to`                     | Configurable earning/deduction/employer/informational lines; DB checks enforce source/percentage rules                     |
+| `employee_payroll_assignments`   | `employee_id`, `component_id`, `amount_override`, `effective_from/to`, `status`                                                                                                                              | Exclusion constraint `employee_payroll_assignments_no_overlap` on employee + component                                    |
+| `payroll_periods`                | `name`, `start_date`, `end_date`, `payment_date`, `status` (`OPEN`/`CLOSED`)                                                                                                                                  | Exclusion constraint `payroll_periods_no_overlap`; payment date cannot precede end date                                   |
+| `payroll_runs`                   | `period_id`, `run_number`, `status`, `calculation_version`, currency/settings snapshot, gross/deduction/net/employer totals, warnings, timestamps                                                            | Partial unique `payroll_runs_one_active_per_period` where status <> `CANCELLED`; unique `(period_id, run_number)`           |
+| `payroll_run_approvals`          | `run_id`, `action` (`SUBMIT_REVIEW`/`APPROVE`/`PUBLISH`/`CANCEL`/`RECALCULATE`), `actor_user_id`, `actor_name`, `comment`                                                                                     | Append-only workflow history                                                                                               |
+| `payroll_payslips`               | `run_id`, `employee_id`, employee/department/position snapshots, base/gross/deductions/employer/net, compensation/assignment/attendance/leave/overtime/adjustment/settings JSON snapshots, `published_at`    | **Unique `(run_id, employee_id)`**; employee FK is `Restrict`, so published history survives employee lifecycle changes     |
+| `payroll_lines`                  | `payslip_id`, optional `component_id`, code/name/type/calculation, quantity, rate, amount, source type, notes                                                                                                 | Immutable calculated breakdown; component FK is `SetNull`                                                                  |
+| `payroll_sources`                | `payslip_id`, `kind` (`ATTENDANCE`/`LEAVE`/`OVERTIME`/`ADJUSTMENT`), `source_id`, `reference jsonb`, quantity, amount                                                                                        | **Unique `(payslip_id, kind, source_id)`**; lets the service detect overtime already consumed by another non-cancelled run |
+| `payroll_adjustments`            | `period_id`, `employee_id`, `component_id`, `amount`, `reason`, `status` (`PENDING`/`APPROVED`/`REJECTED`), reviewer fields                                                                                   | Only approved rows enter calculation; reviewed rows are immutable                                                          |
 
-Payroll generation is a single transaction per period (or per employee batch) and is idempotent:
-re-running for an un-published period replaces draft results; a published period requires an
-explicit adjustment/correction flow.
+Calculation is one transaction per run: draft payslips are replaced, totals and version are updated, and any failure rolls back
+without a partially published payroll. Published payslips are never edited in place; a correction requires a new run/version
+and an explicit adjustment.
 
 ## 7. Performance and learning (later)
 
@@ -195,13 +200,18 @@ document download by an admin.
 - Unique: `users.email` (case-insensitive — store normalized lowercase), `employees.employee_number`,
   `branches.code`, `departments.code`, `positions.code`, `attendance_records(employee_id, work_date)`,
   `leave_balances(employee_id, leave_type_id, period_year)`,
-  `payslips(payroll_period_id, employee_id)`, `approval_requests(subject_type, subject_id)`.
+  `payroll_payslips(run_id, employee_id)`, `payroll_sources(payslip_id, kind, source_id)`, and
+  the payroll exclusion/partial-unique constraints listed in §6.
 - Indexes for list screens: `employees(status, department_id)`, `employees(manager_id)`,
   `employees(full_name)`, `leave_requests(employee_id, status)`,
   `leave_requests(status, created_at DESC)`, `overtime_requests(employee_id, work_date)`,
   `overtime_requests(status, work_date)`, `overtime_requests(employee_id, planned_start_at, planned_end_at)`,
   `overtime_approvals(request_id, stage)`,
-  `overtime_policy_assignments(policy_id, effective_from)`.
+  `overtime_policy_assignments(policy_id, effective_from)`,
+  `employee_compensations(employee_id, effective_from, effective_to)`,
+  `employee_payroll_assignments(employee_id, effective_from, effective_to)`,
+  `payroll_runs(status, created_at)`, `payroll_adjustments(period_id, status)`,
+  `payroll_payslips(employee_id, published_at)`.
 - Overtime uniqueness: `overtime_policies.code`, `overtime_requests(employee_id, client_request_id)`
   when `client_request_id` is present.
 - Soft delete is avoided for core employee records: use `termination_date` + `status`. Master data

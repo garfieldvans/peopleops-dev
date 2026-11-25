@@ -220,6 +220,61 @@ const PositionsPage = lazy(() =>
     default: module.PositionsPage,
   })),
 );
+const PayrollDashboardPage = lazy(() =>
+  import("../features/payroll/payroll-dashboard-page").then((module) => ({
+    default: module.PayrollDashboardPage,
+  })),
+);
+const CompensationPage = lazy(() =>
+  import("../features/payroll/compensation-page").then((module) => ({
+    default: module.CompensationPage,
+  })),
+);
+const PayrollComponentsPage = lazy(() =>
+  import("../features/payroll/payroll-components-page").then((module) => ({
+    default: module.PayrollComponentsPage,
+  })),
+);
+const PayrollAssignmentsPage = lazy(() =>
+  import("../features/payroll/payroll-assignments-page").then((module) => ({
+    default: module.PayrollAssignmentsPage,
+  })),
+);
+const PayrollPeriodsPage = lazy(() =>
+  import("../features/payroll/payroll-periods-page").then((module) => ({
+    default: module.PayrollPeriodsPage,
+  })),
+);
+const PayrollRunsPage = lazy(() =>
+  import("../features/payroll/payroll-runs-page").then((module) => ({
+    default: module.PayrollRunsPage,
+  })),
+);
+const PayrollRunDetailPage = lazy(() =>
+  import("../features/payroll/payroll-run-detail-page").then((module) => ({
+    default: module.PayrollRunDetailPage,
+  })),
+);
+const PayrollAdjustmentsPage = lazy(() =>
+  import("../features/payroll/payroll-adjustments-page").then((module) => ({
+    default: module.PayrollAdjustmentsPage,
+  })),
+);
+const MyPayslipsPage = lazy(() =>
+  import("../features/payroll/my-payslips-page").then((module) => ({
+    default: module.MyPayslipsPage,
+  })),
+);
+const PayslipDetailPage = lazy(() =>
+  import("../features/payroll/payslip-detail-page").then((module) => ({
+    default: module.PayslipDetailPage,
+  })),
+);
+const PayrollReportsPage = lazy(() =>
+  import("../features/payroll/payroll-reports-page").then((module) => ({
+    default: module.PayrollReportsPage,
+  })),
+);
 const RolesPage = lazy(() =>
   import("../features/roles/roles-page").then((module) => ({ default: module.RolesPage })),
 );
@@ -641,6 +696,104 @@ export function App() {
                   >
                     <OvertimeReportsPage />
                   </RequireAnyPermission>
+                }
+              />
+              <Route
+                path="payroll"
+                element={
+                  <RequirePermission permission={PERMISSIONS.PAYROLL_RUNS_READ}>
+                    <PayrollDashboardPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="payroll/compensation"
+                element={
+                  <RequirePermission permission={PERMISSIONS.PAYROLL_COMPENSATION_READ}>
+                    <CompensationPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="payroll/components"
+                element={
+                  <RequirePermission permission={PERMISSIONS.PAYROLL_COMPONENTS_READ}>
+                    <PayrollComponentsPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="payroll/assignments"
+                element={
+                  <RequirePermission permission={PERMISSIONS.PAYROLL_COMPONENTS_READ}>
+                    <PayrollAssignmentsPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="payroll/periods"
+                element={
+                  <RequirePermission permission={PERMISSIONS.PAYROLL_PERIODS_READ}>
+                    <PayrollPeriodsPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="payroll/runs"
+                element={
+                  <RequirePermission permission={PERMISSIONS.PAYROLL_RUNS_READ}>
+                    <PayrollRunsPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="payroll/runs/:id"
+                element={
+                  <RequirePermission permission={PERMISSIONS.PAYROLL_RUNS_READ}>
+                    <PayrollRunDetailPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="payroll/adjustments"
+                element={
+                  <RequirePermission permission={PERMISSIONS.PAYROLL_ADJUSTMENTS_READ}>
+                    <PayrollAdjustmentsPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="payroll/payslips"
+                element={
+                  <RequireAnyPermission
+                    permissions={[
+                      PERMISSIONS.PAYROLL_PAYSLIPS_READ_SELF,
+                      PERMISSIONS.PAYROLL_PAYSLIPS_READ_ALL,
+                    ]}
+                  >
+                    <MyPayslipsPage />
+                  </RequireAnyPermission>
+                }
+              />
+              <Route
+                path="payroll/payslips/:id"
+                element={
+                  <RequireAnyPermission
+                    permissions={[
+                      PERMISSIONS.PAYROLL_PAYSLIPS_READ_SELF,
+                      PERMISSIONS.PAYROLL_PAYSLIPS_READ_ALL,
+                    ]}
+                  >
+                    <PayslipDetailPage />
+                  </RequireAnyPermission>
+                }
+              />
+              <Route
+                path="payroll/reports"
+                element={
+                  <RequirePermission permission={PERMISSIONS.PAYROLL_REPORTS_READ}>
+                    <PayrollReportsPage />
+                  </RequirePermission>
                 }
               />
               <Route path="forbidden" element={<ForbiddenPage />} />

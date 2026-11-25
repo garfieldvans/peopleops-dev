@@ -91,6 +91,76 @@ async function main(): Promise<void> {
       update: {},
     });
 
+    // 4b. Payroll settings and non-statutory starter components.
+    const payrollSettings = await prisma.payrollSetting.findFirst();
+    if (!payrollSettings) {
+      await prisma.payrollSetting.create({ data: {} });
+    }
+    const payrollComponents = [
+      {
+        code: "TRANSPORT_ALLOWANCE",
+        name: "Transport allowance",
+        componentType: "EARNING" as const,
+        calculationType: "FIXED_AMOUNT" as const,
+        defaultAmount: "500000.00",
+      },
+      {
+        code: "MEAL_ALLOWANCE",
+        name: "Meal allowance",
+        componentType: "EARNING" as const,
+        calculationType: "FIXED_AMOUNT" as const,
+        defaultAmount: "300000.00",
+      },
+      {
+        code: "ABSENCE_DEDUCTION",
+        name: "Absence deduction",
+        componentType: "DEDUCTION" as const,
+        calculationType: "SOURCE_BASED" as const,
+        defaultAmount: "0.00",
+        sourceType: "ABSENCE" as const,
+        rateMultiplier: "1.0000",
+      },
+      {
+        code: "LATE_DEDUCTION",
+        name: "Late arrival deduction",
+        componentType: "DEDUCTION" as const,
+        calculationType: "SOURCE_BASED" as const,
+        defaultAmount: "0.00",
+        sourceType: "LATE" as const,
+        rateMultiplier: "1.0000",
+      },
+      {
+        code: "UNPAID_LEAVE_DEDUCTION",
+        name: "Unpaid leave deduction",
+        componentType: "DEDUCTION" as const,
+        calculationType: "SOURCE_BASED" as const,
+        defaultAmount: "0.00",
+        sourceType: "UNPAID_LEAVE" as const,
+        rateMultiplier: "1.0000",
+      },
+      {
+        code: "OVERTIME_PAY",
+        name: "Overtime pay",
+        componentType: "EARNING" as const,
+        calculationType: "SOURCE_BASED" as const,
+        defaultAmount: "0.00",
+        sourceType: "OVERTIME" as const,
+        rateMultiplier: "1.0000",
+      },
+    ];
+    for (const component of payrollComponents) {
+      await prisma.payrollComponent.upsert({
+        where: { code: component.code },
+        create: {
+          ...component,
+          description: "Starter configuration; adjust to match company policy.",
+          effectiveFrom: new Date("2020-01-01T00:00:00.000Z"),
+          isActive: true,
+        },
+        update: {},
+      });
+    }
+
     // 5. Job levels (reference data, ordered).
     const jobLevels = [
       { code: "L1", name: "Staff", displayOrder: 1 },

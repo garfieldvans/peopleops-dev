@@ -117,6 +117,46 @@ const NAV_ITEMS: NavItem[] = [
     label: "Overtime reports",
     anyPermission: [PERMISSIONS.OVERTIME_READ_TEAM, PERMISSIONS.OVERTIME_READ_ALL],
   },
+  { to: "/payroll", label: "Payroll", permission: PERMISSIONS.PAYROLL_RUNS_READ },
+  {
+    to: "/payroll/compensation",
+    label: "Compensation",
+    permission: PERMISSIONS.PAYROLL_COMPENSATION_READ,
+  },
+  {
+    to: "/payroll/components",
+    label: "Payroll components",
+    permission: PERMISSIONS.PAYROLL_COMPONENTS_READ,
+  },
+  {
+    to: "/payroll/assignments",
+    label: "Payroll assignments",
+    permission: PERMISSIONS.PAYROLL_COMPONENTS_READ,
+  },
+  {
+    to: "/payroll/periods",
+    label: "Payroll periods",
+    permission: PERMISSIONS.PAYROLL_PERIODS_READ,
+  },
+  { to: "/payroll/runs", label: "Payroll runs", permission: PERMISSIONS.PAYROLL_RUNS_READ },
+  {
+    to: "/payroll/adjustments",
+    label: "Payroll adjustments",
+    permission: PERMISSIONS.PAYROLL_ADJUSTMENTS_READ,
+  },
+  {
+    to: "/payroll/payslips",
+    label: "Payslips",
+    anyPermission: [
+      PERMISSIONS.PAYROLL_PAYSLIPS_READ_SELF,
+      PERMISSIONS.PAYROLL_PAYSLIPS_READ_ALL,
+    ],
+  },
+  {
+    to: "/payroll/reports",
+    label: "Payroll reports",
+    permission: PERMISSIONS.PAYROLL_REPORTS_READ,
+  },
   { to: "/employees/me", label: "My profile", permission: PERMISSIONS.EMPLOYEE_READ_SELF },
   {
     to: "/employees",
@@ -179,7 +219,12 @@ export function AppShell() {
             <NavLink
               key={item.to}
               to={item.to}
-              end={item.to === "/" || item.to === "/leave" || item.to === "/overtime"}
+              end={
+                item.to === "/" ||
+                item.to === "/leave" ||
+                item.to === "/overtime" ||
+                item.to === "/payroll"
+              }
               className={navClassName}
             >
               {item.label}

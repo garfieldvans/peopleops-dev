@@ -147,6 +147,30 @@ export const PERMISSIONS = {
   OVERTIME_POLICY_READ: "overtime.policy.read",
   OVERTIME_POLICY_MANAGE: "overtime.policy.manage",
   OVERTIME_ASSIGNMENT_MANAGE: "overtime.assignment.manage",
+  PAYROLL_COMPENSATION_READ: "payroll.compensation.read",
+  PAYROLL_COMPENSATION_MANAGE: "payroll.compensation.manage",
+  PAYROLL_COMPONENTS_READ: "payroll.components.read",
+  PAYROLL_COMPONENTS_MANAGE: "payroll.components.manage",
+  PAYROLL_ASSIGNMENTS_MANAGE: "payroll.assignments.manage",
+  PAYROLL_SETTINGS_READ: "payroll.settings.read",
+  PAYROLL_SETTINGS_MANAGE: "payroll.settings.manage",
+  PAYROLL_PERIODS_READ: "payroll.periods.read",
+  PAYROLL_PERIODS_MANAGE: "payroll.periods.manage",
+  PAYROLL_RUNS_READ: "payroll.runs.read",
+  PAYROLL_RUNS_CALCULATE: "payroll.runs.calculate",
+  PAYROLL_RUNS_REVIEW: "payroll.runs.review",
+  PAYROLL_RUNS_APPROVE: "payroll.runs.approve",
+  PAYROLL_RUNS_PUBLISH: "payroll.runs.publish",
+  PAYROLL_RUNS_CANCEL: "payroll.runs.cancel",
+  PAYROLL_RUNS_OVERRIDE: "payroll.runs.override",
+  PAYROLL_ADJUSTMENTS_READ: "payroll.adjustments.read",
+  PAYROLL_ADJUSTMENTS_CREATE: "payroll.adjustments.create",
+  PAYROLL_ADJUSTMENTS_APPROVE: "payroll.adjustments.approve",
+  PAYROLL_PAYSLIPS_READ_SELF: "payroll.payslips.read.self",
+  PAYROLL_PAYSLIPS_READ_ALL: "payroll.payslips.read.all",
+  PAYROLL_PAYSLIPS_DOWNLOAD: "payroll.payslips.download",
+  PAYROLL_REPORTS_READ: "payroll.reports.read",
+  PAYROLL_HISTORY_READ: "payroll.history.read",
 } as const;
 
 export type PermissionCode = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -1243,4 +1267,328 @@ export interface OvertimeSummary {
   actualMinutes: number;
   verifiedMinutes: number;
   rows: OvertimeSummaryRow[];
+}
+
+// ---------------------------------------------------------------------------
+// Phase 7 — Payroll
+// ---------------------------------------------------------------------------
+
+export type PayrollComponentType =
+  | "EARNING"
+  | "DEDUCTION"
+  | "EMPLOYER_CONTRIBUTION"
+  | "INFORMATIONAL";
+export const PAYROLL_COMPONENT_TYPES: readonly PayrollComponentType[] = [
+  "EARNING",
+  "DEDUCTION",
+  "EMPLOYER_CONTRIBUTION",
+  "INFORMATIONAL",
+];
+
+export type PayrollCalculationType =
+  | "FIXED_AMOUNT"
+  | "PERCENTAGE"
+  | "MANUAL_AMOUNT"
+  | "SOURCE_BASED";
+export const PAYROLL_CALCULATION_TYPES: readonly PayrollCalculationType[] = [
+  "FIXED_AMOUNT",
+  "PERCENTAGE",
+  "MANUAL_AMOUNT",
+  "SOURCE_BASED",
+];
+
+export type PayrollSourceType =
+  | "ABSENCE"
+  | "LATE"
+  | "EARLY_LEAVE"
+  | "UNPAID_LEAVE"
+  | "OVERTIME";
+export const PAYROLL_SOURCE_TYPES: readonly PayrollSourceType[] = [
+  "ABSENCE",
+  "LATE",
+  "EARLY_LEAVE",
+  "UNPAID_LEAVE",
+  "OVERTIME",
+];
+
+export type PayrollSourceKind = "ATTENDANCE" | "LEAVE" | "OVERTIME" | "ADJUSTMENT";
+export type PayrollPaymentFrequency = "MONTHLY" | "SEMI_MONTHLY" | "BIWEEKLY" | "WEEKLY";
+export const PAYROLL_PAYMENT_FREQUENCIES: readonly PayrollPaymentFrequency[] = [
+  "MONTHLY",
+  "SEMI_MONTHLY",
+  "BIWEEKLY",
+  "WEEKLY",
+];
+export type PayrollPeriodStatus = "OPEN" | "CLOSED";
+export type PayrollRunStatus =
+  | "DRAFT"
+  | "CALCULATING"
+  | "CALCULATED"
+  | "UNDER_REVIEW"
+  | "APPROVED"
+  | "PUBLISHED"
+  | "LOCKED"
+  | "CANCELLED";
+export const PAYROLL_RUN_STATUSES: readonly PayrollRunStatus[] = [
+  "DRAFT",
+  "CALCULATING",
+  "CALCULATED",
+  "UNDER_REVIEW",
+  "APPROVED",
+  "PUBLISHED",
+  "LOCKED",
+  "CANCELLED",
+];
+export type PayrollAdjustmentStatus = "PENDING" | "APPROVED" | "REJECTED";
+export type PayrollRoundingMode = "HALF_UP" | "ROUND_DOWN" | "ROUND_UP";
+export type PayrollRunAction = "SUBMIT_REVIEW" | "APPROVE" | "PUBLISH" | "CANCEL" | "RECALCULATE";
+
+export interface PayrollSetting {
+  id: string;
+  standardMonthlyHours: string;
+  standardMonthlyDays: string;
+  roundingMode: PayrollRoundingMode;
+  currencyScale: number;
+  updatedAt: string;
+}
+
+export interface PayrollEmployeeRef {
+  id: string;
+  employeeNumber: string;
+  fullName: string;
+  department: string | null;
+  position: string | null;
+}
+
+export interface EmployeeCompensation {
+  id: string;
+  employee: PayrollEmployeeRef;
+  baseSalary: string;
+  currency: string;
+  paymentFrequency: PayrollPaymentFrequency;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+  status: MasterStatus;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PayrollComponent {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  componentType: PayrollComponentType;
+  calculationType: PayrollCalculationType;
+  defaultAmount: string;
+  percentage: string | null;
+  rateMultiplier: string | null;
+  sourceType: PayrollSourceType | null;
+  isTaxable: boolean;
+  isRecurring: boolean;
+  isActive: boolean;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+  assignmentCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EmployeePayrollAssignment {
+  id: string;
+  employee: PayrollEmployeeRef;
+  component: Pick<PayrollComponent, "id" | "code" | "name" | "componentType" | "calculationType">;
+  amountOverride: string | null;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+  status: MasterStatus;
+  notes: string | null;
+  createdAt: string;
+}
+
+export interface PayrollPeriod {
+  id: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  paymentDate: string;
+  status: PayrollPeriodStatus;
+  notes: string | null;
+  runCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PayrollRunApproval {
+  id: string;
+  action: PayrollRunAction;
+  actor: { id: string; name: string } | null;
+  actorName: string;
+  comment: string | null;
+  createdAt: string;
+}
+
+export interface PayrollRun {
+  id: string;
+  period: Pick<PayrollPeriod, "id" | "name" | "startDate" | "endDate" | "paymentDate" | "status">;
+  runNumber: number;
+  status: PayrollRunStatus;
+  calculationVersion: number;
+  currency: string;
+  grossTotal: string;
+  deductionTotal: string;
+  netTotal: string;
+  employerContributionTotal: string;
+  warnings: string[];
+  employeeCount: number;
+  calculatedAt: string | null;
+  reviewedAt: string | null;
+  approvedAt: string | null;
+  publishedAt: string | null;
+  cancelledAt: string | null;
+  cancelReason: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PayrollRunDetail extends PayrollRun {
+  approvals: PayrollRunApproval[];
+}
+
+export interface PayrollLine {
+  id: string;
+  componentId: string | null;
+  code: string;
+  name: string;
+  componentType: PayrollComponentType;
+  calculationType: PayrollCalculationType;
+  quantity: string | null;
+  rate: string | null;
+  amount: string;
+  sourceType: PayrollSourceType | null;
+  notes: string | null;
+}
+
+export interface PayrollSource {
+  id: string;
+  kind: PayrollSourceKind;
+  sourceId: string;
+  reference: Record<string, unknown> | null;
+  quantity: string | null;
+  amount: string | null;
+}
+
+export interface PayrollPayslip {
+  id: string;
+  runId: string;
+  period: Pick<PayrollPeriod, "id" | "name" | "startDate" | "endDate" | "paymentDate">;
+  employeeId: string;
+  employeeNumber: string;
+  employeeName: string;
+  department: string | null;
+  position: string | null;
+  currency: string;
+  baseSalary: string;
+  grossPay: string;
+  totalDeductions: string;
+  employerContributions: string;
+  netPay: string;
+  warnings: string[];
+  publishedAt: string | null;
+  createdAt: string;
+}
+
+export interface PayrollPayslipDetail extends PayrollPayslip {
+  lines: PayrollLine[];
+  sources: PayrollSource[];
+  compensationSnapshot: Record<string, unknown>;
+  assignmentSnapshot: Record<string, unknown>;
+  attendanceSnapshot: Record<string, unknown>;
+  leaveSnapshot: Record<string, unknown>;
+  overtimeSnapshot: Record<string, unknown>;
+  adjustmentSnapshot: Record<string, unknown>;
+  settingsSnapshot: Record<string, unknown>;
+}
+
+export interface PayrollAdjustment {
+  id: string;
+  period: Pick<PayrollPeriod, "id" | "name" | "startDate" | "endDate">;
+  employee: PayrollEmployeeRef;
+  component: Pick<PayrollComponent, "id" | "code" | "name" | "componentType">;
+  amount: string;
+  reason: string;
+  status: PayrollAdjustmentStatus;
+  createdBy: { id: string; name: string } | null;
+  reviewedBy: { id: string; name: string } | null;
+  reviewedAt: string | null;
+  reviewComment: string | null;
+  createdAt: string;
+}
+
+export interface PayrollDashboard {
+  openPeriods: number;
+  activeRuns: number;
+  pendingAdjustments: number;
+  publishedRunsThisMonth: number;
+  netPaidThisMonth: string;
+  recentRuns: PayrollRun[];
+}
+
+export interface PayrollReportSummary {
+  from: string;
+  to: string;
+  runCount: number;
+  payslipCount: number;
+  grossTotal: string;
+  deductionTotal: string;
+  netTotal: string;
+  employerContributionTotal: string;
+  rows: { label: string; amount: string }[];
+}
+
+export interface PayrollComponentReportRow {
+  code: string;
+  name: string;
+  componentType: PayrollComponentType;
+  employeeCount: number;
+  totalAmount: string;
+}
+
+export interface PayrollComponentReport {
+  from: string;
+  to: string;
+  rows: PayrollComponentReportRow[];
+}
+
+export interface PayrollRegisterRow {
+  payslipId: string;
+  employeeId: string;
+  employeeNumber: string;
+  employeeName: string;
+  department: string | null;
+  position: string | null;
+  currency: string;
+  grossPay: string;
+  totalDeductions: string;
+  netPay: string;
+  employerContributions: string;
+  status: PayrollRunStatus;
+  paymentDate: string;
+}
+
+export interface PayrollRegister {
+  from: string;
+  to: string;
+  rows: PayrollRegisterRow[];
+  totals: {
+    grossPay: string;
+    totalDeductions: string;
+    netPay: string;
+    employerContributions: string;
+  };
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
 }

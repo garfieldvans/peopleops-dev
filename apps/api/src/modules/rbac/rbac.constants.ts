@@ -517,6 +517,126 @@ export const PERMISSION_DEFINITIONS: readonly PermissionDefinition[] = [
     name: "Manage overtime assignments",
     description: "Assign overtime policies to employees, departments, or branches",
   },
+  {
+    code: PERMISSIONS.PAYROLL_COMPENSATION_READ,
+    name: "Read compensation",
+    description: "View employee compensation and history",
+  },
+  {
+    code: PERMISSIONS.PAYROLL_COMPENSATION_MANAGE,
+    name: "Manage compensation",
+    description: "Create and update effective-dated employee compensation",
+  },
+  {
+    code: PERMISSIONS.PAYROLL_COMPONENTS_READ,
+    name: "Read payroll components",
+    description: "View payroll component configuration",
+  },
+  {
+    code: PERMISSIONS.PAYROLL_COMPONENTS_MANAGE,
+    name: "Manage payroll components",
+    description: "Create, update, and deactivate payroll components",
+  },
+  {
+    code: PERMISSIONS.PAYROLL_ASSIGNMENTS_MANAGE,
+    name: "Manage payroll assignments",
+    description: "Assign recurring payroll components to employees",
+  },
+  {
+    code: PERMISSIONS.PAYROLL_SETTINGS_READ,
+    name: "Read payroll settings",
+    description: "View payroll calculation settings",
+  },
+  {
+    code: PERMISSIONS.PAYROLL_SETTINGS_MANAGE,
+    name: "Manage payroll settings",
+    description: "Update payroll calculation settings",
+  },
+  {
+    code: PERMISSIONS.PAYROLL_PERIODS_READ,
+    name: "Read payroll periods",
+    description: "View payroll periods and runs",
+  },
+  {
+    code: PERMISSIONS.PAYROLL_PERIODS_MANAGE,
+    name: "Manage payroll periods",
+    description: "Create and update payroll periods",
+  },
+  {
+    code: PERMISSIONS.PAYROLL_RUNS_READ,
+    name: "Read payroll runs",
+    description: "View payroll runs, calculations, and warnings",
+  },
+  {
+    code: PERMISSIONS.PAYROLL_RUNS_CALCULATE,
+    name: "Calculate payroll",
+    description: "Create and recalculate payroll runs",
+  },
+  {
+    code: PERMISSIONS.PAYROLL_RUNS_REVIEW,
+    name: "Review payroll",
+    description: "Submit a calculated payroll run for review",
+  },
+  {
+    code: PERMISSIONS.PAYROLL_RUNS_APPROVE,
+    name: "Approve payroll",
+    description: "Approve a payroll run for publication",
+  },
+  {
+    code: PERMISSIONS.PAYROLL_RUNS_PUBLISH,
+    name: "Publish payroll",
+    description: "Publish approved payroll and payslips",
+  },
+  {
+    code: PERMISSIONS.PAYROLL_RUNS_CANCEL,
+    name: "Cancel payroll",
+    description: "Cancel a payroll run with an audit reason",
+  },
+  {
+    code: PERMISSIONS.PAYROLL_RUNS_OVERRIDE,
+    name: "Override payroll separation of duties",
+    description: "Allow a run creator to approve their own payroll run",
+  },
+  {
+    code: PERMISSIONS.PAYROLL_ADJUSTMENTS_READ,
+    name: "Read payroll adjustments",
+    description: "View payroll adjustments",
+  },
+  {
+    code: PERMISSIONS.PAYROLL_ADJUSTMENTS_CREATE,
+    name: "Create payroll adjustments",
+    description: "Create one-time payroll adjustments",
+  },
+  {
+    code: PERMISSIONS.PAYROLL_ADJUSTMENTS_APPROVE,
+    name: "Approve payroll adjustments",
+    description: "Approve or reject payroll adjustments",
+  },
+  {
+    code: PERMISSIONS.PAYROLL_PAYSLIPS_READ_SELF,
+    name: "Read own payslips",
+    description: "View the signed-in employee's published payslips",
+  },
+  {
+    code: PERMISSIONS.PAYROLL_PAYSLIPS_READ_ALL,
+    name: "Read all payslips",
+    description: "View published payslips across the organization",
+  },
+  {
+    code: PERMISSIONS.PAYROLL_PAYSLIPS_DOWNLOAD,
+    name: "Download payslips",
+    description: "Download authorized payslip PDFs",
+  },
+  {
+    code: PERMISSIONS.PAYROLL_REPORTS_READ,
+    name: "Read payroll reports",
+    description: "View payroll summary, deduction, and overtime reports",
+  },
+  {
+    code: PERMISSIONS.PAYROLL_HISTORY_READ,
+    name: "Read payroll history",
+    description: "View historical payroll runs and published results",
+  },
 ];
 
 const ALL_PERMISSIONS = PERMISSION_DEFINITIONS.map((permission) => permission.code);
@@ -638,6 +758,62 @@ const OVERTIME_ADMIN = [
   PERMISSIONS.OVERTIME_ASSIGNMENT_MANAGE,
 ] as const;
 
+const PAYROLL_EMPLOYEE = [
+  PERMISSIONS.PAYROLL_PAYSLIPS_READ_SELF,
+  PERMISSIONS.PAYROLL_PAYSLIPS_DOWNLOAD,
+] as const;
+
+const PAYROLL_HR = [
+  PERMISSIONS.PAYROLL_COMPENSATION_READ,
+  PERMISSIONS.PAYROLL_COMPENSATION_MANAGE,
+  PERMISSIONS.PAYROLL_COMPONENTS_READ,
+  PERMISSIONS.PAYROLL_COMPONENTS_MANAGE,
+  PERMISSIONS.PAYROLL_ASSIGNMENTS_MANAGE,
+  PERMISSIONS.PAYROLL_SETTINGS_READ,
+  PERMISSIONS.PAYROLL_SETTINGS_MANAGE,
+  PERMISSIONS.PAYROLL_PERIODS_READ,
+  PERMISSIONS.PAYROLL_PERIODS_MANAGE,
+  PERMISSIONS.PAYROLL_RUNS_READ,
+  PERMISSIONS.PAYROLL_RUNS_CALCULATE,
+  PERMISSIONS.PAYROLL_RUNS_REVIEW,
+  PERMISSIONS.PAYROLL_RUNS_APPROVE,
+  PERMISSIONS.PAYROLL_RUNS_PUBLISH,
+  PERMISSIONS.PAYROLL_RUNS_CANCEL,
+  PERMISSIONS.PAYROLL_ADJUSTMENTS_READ,
+  PERMISSIONS.PAYROLL_ADJUSTMENTS_CREATE,
+  PERMISSIONS.PAYROLL_ADJUSTMENTS_APPROVE,
+  PERMISSIONS.PAYROLL_PAYSLIPS_READ_SELF,
+  PERMISSIONS.PAYROLL_PAYSLIPS_READ_ALL,
+  PERMISSIONS.PAYROLL_PAYSLIPS_DOWNLOAD,
+  PERMISSIONS.PAYROLL_REPORTS_READ,
+  PERMISSIONS.PAYROLL_HISTORY_READ,
+  ...PAYROLL_EMPLOYEE,
+] as const;
+
+const PAYROLL_OFFICER = [
+  PERMISSIONS.PAYROLL_COMPENSATION_READ,
+  PERMISSIONS.PAYROLL_COMPONENTS_READ,
+  PERMISSIONS.PAYROLL_ASSIGNMENTS_MANAGE,
+  PERMISSIONS.PAYROLL_SETTINGS_READ,
+  PERMISSIONS.PAYROLL_PERIODS_READ,
+  PERMISSIONS.PAYROLL_PERIODS_MANAGE,
+  PERMISSIONS.PAYROLL_RUNS_READ,
+  PERMISSIONS.PAYROLL_RUNS_CALCULATE,
+  PERMISSIONS.PAYROLL_RUNS_REVIEW,
+  PERMISSIONS.PAYROLL_RUNS_APPROVE,
+  PERMISSIONS.PAYROLL_RUNS_PUBLISH,
+  PERMISSIONS.PAYROLL_RUNS_CANCEL,
+  PERMISSIONS.PAYROLL_ADJUSTMENTS_READ,
+  PERMISSIONS.PAYROLL_ADJUSTMENTS_CREATE,
+  PERMISSIONS.PAYROLL_ADJUSTMENTS_APPROVE,
+  PERMISSIONS.PAYROLL_PAYSLIPS_READ_SELF,
+  PERMISSIONS.PAYROLL_PAYSLIPS_READ_ALL,
+  PERMISSIONS.PAYROLL_PAYSLIPS_DOWNLOAD,
+  PERMISSIONS.PAYROLL_REPORTS_READ,
+  PERMISSIONS.PAYROLL_HISTORY_READ,
+  ...PAYROLL_EMPLOYEE,
+] as const;
+
 export interface RoleDefinition {
   code: RoleCode;
   name: string;
@@ -665,6 +841,7 @@ export const ROLE_DEFINITIONS: readonly RoleDefinition[] = [
       ...LEAVE_ADMIN,
       ...OVERTIME_SELF,
       ...OVERTIME_ADMIN,
+      ...PAYROLL_HR,
       PERMISSIONS.USER_READ,
       PERMISSIONS.USER_CREATE,
       PERMISSIONS.USER_UPDATE,
@@ -724,12 +901,13 @@ export const ROLE_DEFINITIONS: readonly RoleDefinition[] = [
   {
     code: ROLE_CODES.PAYROLL_OFFICER,
     name: "Payroll Officer",
-    description: "Payroll operations (module permissions arrive in a later phase)",
+    description: "Runs payroll processing, adjustments, reports, and payslips",
     isSystem: false,
     permissions: [
       ...SELF_SERVICE,
       ...LEAVE_SELF,
       ...OVERTIME_SELF,
+      ...PAYROLL_OFFICER,
       PERMISSIONS.OVERTIME_READ_ALL,
       PERMISSIONS.OVERTIME_EXPORT,
       PERMISSIONS.OVERTIME_POLICY_READ,
@@ -749,6 +927,7 @@ export const ROLE_DEFINITIONS: readonly RoleDefinition[] = [
       ...SELF_SERVICE,
       ...LEAVE_SELF,
       ...OVERTIME_SELF,
+      ...PAYROLL_EMPLOYEE,
       PERMISSIONS.WORK_SCHEDULE_READ,
       PERMISSIONS.SHIFT_READ,
       PERMISSIONS.HOLIDAY_READ,

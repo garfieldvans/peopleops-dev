@@ -1,6 +1,6 @@
 # PeopleOps — System Overview
 
-Status: updated after Phase 6. Phases 1–6 are implemented; later modules remain design targets.
+Status: updated after Phase 7. Phases 1–7 are implemented; later modules remain design targets.
 
 ## 1. Purpose
 
@@ -41,9 +41,9 @@ Browser
   └── apps/worker     no HTTP surface; shares packages/database
 ```
 
-The worker currently runs leave accrual/carry-over/expiry at 01:00 and read-only overtime
-housekeeping at 02:00 in the company timezone read from the database. It shares the database
-package and has no HTTP surface.
+The worker currently runs leave accrual/carry-over/expiry at 01:00, read-only overtime
+housekeeping at 02:00, and read-only payroll housekeeping at 03:00 in the company timezone read
+from the database. It shares the database package and has no HTTP surface.
 
 Deferred infrastructure (intentionally not in Phase 1):
 
@@ -93,7 +93,7 @@ Rules that keep the boundaries real:
 | `attendance`    | attendance_records, attendance_corrections                                                                                        | employees, organization                                   |
 | `leave`         | leave_types, leave_policies, leave_assignments, leave_balances, leave_transactions, leave_requests                                | employees, attendance                                     |
 | `overtime`      | overtime_policies, overtime_policy_assignments, overtime_requests, overtime_approvals, overtime_corrections, overtime_attachments | employees, attendance, leave                              |
-| `payroll`       | payroll_periods, payroll_runs, payslips, payslip_lines, salary_components                                                         | employees, attendance, leave, overtime                    |
+| `payroll`       | payroll_settings, employee_compensations, payroll_components, employee_payroll_assignments, payroll_periods, payroll_runs, payroll_run_approvals, payroll_payslips, payroll_lines, payroll_sources, payroll_adjustments | employees, attendance, leave, overtime |
 | `performance`   | review_cycles, reviews, goals                                                                                                     | employees                                                 |
 | `learning`      | courses, course_sessions, enrollments                                                                                             | employees                                                 |
 | `notifications` | notifications                                                                                                                     | users                                                     |
@@ -131,6 +131,10 @@ current dependency.
   request, and attendance clock-out may supply the actual window without overwriting the record.
 - **Effective-dated policy**: overtime stores a JSON policy snapshot on each request so later policy
   edits cannot rewrite history. Assignment precedence is employee, then department, then branch.
+- **Payroll snapshots**: each run copies standard hours/days, rounding, currency, and scale. Each
+  payslip stores compensation, assignment, attendance, leave, verified-overtime, adjustment, and
+  settings snapshots plus source references. Published payslips are immutable; recalculation
+  increments the run version and only applies approved adjustments.
 
 ## 7. Frontend shape
 
