@@ -4,6 +4,7 @@ import { AuditModule } from "./modules/audit/audit.module";
 import { AuthModule } from "./modules/auth/auth.module";
 import { HealthModule } from "./modules/health/health.module";
 import { LeaveModule } from "./modules/leave/leave.module";
+import { OvertimeModule } from "./modules/overtime/overtime.module";
 import { EmployeeModule } from "./modules/employee/employee.module";
 import { OrganizationModule } from "./modules/organization/organization.module";
 import { PermissionsModule } from "./modules/permissions/permissions.module";
@@ -26,6 +27,7 @@ import { PrismaModule } from "./prisma/prisma.module";
     EmployeeModule,
     AttendanceModule,
     LeaveModule,
+    OvertimeModule,
   ],
 })
 export class AppModule {}

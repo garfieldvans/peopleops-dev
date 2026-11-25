@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { Prisma } from "@peopleops/database";
 import { calculatePeriodTotals, dateKeyOf } from "@peopleops/leave-engine";
 import type { LeaveReportRow, LeaveReportSummary } from "@peopleops/shared-types";
+import { csvCell } from "../../common/export/csv-cell";
 import { PrismaService } from "../../prisma/prisma.service";
 import type { LeaveReportQueryDto } from "./dto/leave.dto";
 import { displayName } from "./leave.mapper";
@@ -131,7 +132,7 @@ export class LeaveReportsService {
         String(row.reserved),
         String(row.available),
       ]
-        .map((value) => (/[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value))
+        .map(csvCell)
         .join(","),
     );
     return `\uFEFF${[header.join(","), ...lines].join("\r\n")}`;

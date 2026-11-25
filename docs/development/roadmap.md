@@ -1,8 +1,7 @@
 # PeopleOps — Development Roadmap
 
-Status: Phases 1–3 are complete, including organization and employee management (the instruction set
-calls this whole slice Phase 3). Nothing beyond it is authorized until the next phase is explicitly
-approved.
+Status: Phases 1–6 are complete, including attendance, leave, and overtime management. Nothing
+beyond Phase 6 is authorized until the next phase is explicitly approved.
 
 ## Definition of done (applies to every phase)
 
@@ -20,14 +19,13 @@ approved.
 └── 1 Foundation
     └── 2 Auth + Users/RBAC
         └── 3 Organization + Employees (done)
-            ├── 5 Attendance
-            │   └── 8 Overtime
-            └── 6 Leave
-                └── 7 Approval workflow ──► 8 Overtime
-                    └── 9 Payroll (needs 5, 6, 8)
-                        ├── 10 Performance / Learning
-                        └── 11 Notifications + Reports
-                            └── 12 Hardening & deployment
+            ├── 4 Attendance (done)
+            └── 5 Leave (done)
+                └── 6 Overtime (done, uses attendance + leave)
+                    └── 7 Payroll (needs 4, 5, 6)
+                        ├── 8 Performance / Learning
+                        └── 9 Notifications + Reports
+                            └── 10 Hardening & deployment
 ```
 
 ## Phases
@@ -65,7 +63,8 @@ global `JwtAuthGuard` + `PermissionsGuard`, `OriginGuard`, login throttling, aud
 idempotent seed (5 system roles, permission catalogue, bootstrap administrator). Web: login page,
 protected routing, permission-aware navigation, Users and Roles screens. `pnpm test` covers the API
 unit suites and 11 web tests; `pnpm --filter @peopleops/api test:e2e` passes 7/7. Limitations: e2e
-stubs the throttler, Figma references were unavailable, and the bundle exceeds Vite's 500 kB warning.
+stubs the throttler and Figma references were unavailable; the later Phase 6 optimization removed the
+bundle warning.
 
 Blocks: all data modules.
 
@@ -104,61 +103,88 @@ timezone edges, and web tests pass 21/21. Docs: `docs/modules/attendance.md`,
 attendance generation/rollup worker, no correction attachments or notifications, and FIFO cleanup is
 not required because no absence rows are pre-generated.
 
-### Phase 6 — Leave
+### Phase 5 — Leave — ✅ completed
 
-Leave types + quotas, balance ledger with transactional reservation, request submission, overlap
-prevention, balance display, leave calendar/list, cancellation rules.
+Leave types, versioned policies, effective-dated assignments, entitlement periods, accrual, ledger
+with pending reservations, carry-over and expiration, request submission, manager/HR approval,
+cancellation and reversal, attachments, calendar, reports, and attendance integration.
 
 Exit criteria: balance always equals the sum of ledger deltas; concurrent submissions cannot
 overspend a balance (tested).
 
-### Phase 7 — Approval Workflow
+Result: met. `leave.e2e-spec.ts` passes 13/13 within the 35/35 API e2e suite, covering entitlement,
+duration, reservations, approval, cancellation/reversal, withdrawal, overdraw prevention, attendance
+visibility, reports, idempotent accrual, and policy snapshots. The web suite passes 31/31, including
+leave dashboard, balances, form validation, preview/submit, approval actions, permission-aware
+detail, calendar, and history filters. Docs: `docs/modules/leave.md`,
+`docs/database/phase-5-erd.md`, `docs/security/permission-matrix.md`,
+`docs/modules/attendance.md`. Limitations: hourly leave is not implemented; half-day attendance
+currently exposes leave but does not recalculate the remaining half against late/early or absence
+rules; approval is leave-specific; statutory Indonesian leave rules are not implemented; wide tables
+still scroll horizontally on mobile.
 
-Generic approval requests/steps, sequential approvers, delegate support, decision history, inbox UI
-(`Drawer` detail), wiring for leave (and overtime next). Replaces any phase-6 temporary approval stub.
+### Phase 6 — Overtime — ✅ completed
 
-### Phase 8 — Overtime
+Overtime policies with effective dates and rounding, employee/department/branch assignments, planned
+requests, manager then HR approval, actual recording from manual input or attendance, HR
+verification, immutable corrections, attachments, dashboard, team lists, reports, CSV export, and a
+read-only worker housekeeping job.
 
-Overtime requests, planned vs approved vs actual minutes, reconciliation with attendance, approval
-integration, payroll export hook.
+Exit criteria: policy configuration and assignment work; employees can submit; configured approval
+sequences work; actual and verified minutes remain separate and traceable; attendance and leave are
+never overwritten; backend authorization is enforced.
 
-### Phase 9 — Payroll
+Result: met. `overtime.e2e-spec.ts` passes 6/6, the calculation unit suite passes 14/14, and the web
+suite passes 34/34 including overtime form, approval, and permission-aware detail flows. API, web,
+and worker typechecks pass. Docs: `docs/overtime/domain-analysis.md`, `business-rules.md`,
+`workflow.md`, `permission-matrix.md`, `api.md`, `testing.md`. Follow-up optimization: list rows now
+omit approval/correction/attachment collections, summary totals are aggregated in PostgreSQL,
+approval/verification queues are paginated, route pages are lazy-loaded with shared vendor chunks,
+and an overlap index was added. The production build no longer emits a chunk above Vite's 500 kB
+warning threshold. Limitations: verification is manual; no statutory multipliers or payroll
+calculation; no notification job; the worker only reports stale requests; attachments are private
+but not browser-tested.
+
+### Phase 7 — Payroll
 
 Salary components, periods, payroll run (draft → published → closed), payslip generation with
 snapshot lines, immutable published results + adjustment flow, employee payslip view, export.
 Jurisdiction rules (tax/BPJS) require an explicit later decision.
 
-### Phase 10 — Performance and Learning
+### Phase 8 — Performance and Learning
 
 Review cycles, goals, reviews; courses, sessions, enrollments with capacity checks.
 
-### Phase 11 — Notifications and Reports
+### Phase 9 — Notifications and Reports
 
 In-app notifications (badge, list, read state), email channel behind an interface, worker-driven
 dispatch, report screens (headcount, attendance, leave, payroll cost) using module read services.
 
-### Phase 12 — Hardening and deployment
+### Phase 10 — Hardening and deployment
 
 Audit log viewer, security review (CSRF, uploads, throttling), performance pass with measurements,
 accessibility audit, Nginx/Docker production images, Jenkins pipeline, AWS target if requested.
 
 ## Risks and open questions
 
-| Risk | Impact | Mitigation |
-| --- | --- | --- |
-| Figma reference inaccessible | Visual fidelity to SmartHR unverified | Build on verified Nemo tokens (§2 of the design analysis); restyle once screenshots/exports arrive |
-| Nest 12 ecosystem lag (e.g. `nestjs-zod` supports only up to Swagger 11) | Would force a downgrade | ADR-005: class-validator DTOs; no incompatible bridge |
-| Prisma `latest` = 8.0.0-rc | Accidental prerelease install | Exact pin 7.10.1 for CLI and client; no `@latest` in scripts |
-| Very new Node (26) and TS 7 line | Tooling incompatibility | Pin TS 5.9.3; Prisma supports Node ≥24; CI on Node 24 LTS |
-| Tailwind 4 + Nemo CSS variables overlap | Inconsistent styling | Tailwind for layout only; tokens for visuals (ADR-003) |
-| Attendance/timezone correctness | Wrong work dates, payroll errors | UTC storage + company timezone config; explicit tests around midnight |
-| Payroll statutory rules unspecified | Rework risk | Keep calculation components configurable; confirm jurisdiction before Phase 9 |
-| No Figma/inventory access to charts | Dashboard gaps | Defer charts to a dedicated decision in Phase 11 |
-| Two validation sources (DTO + Zod) | Drift | Shared types package + contract tests in the API e2e suite |
+| Risk                                                                     | Impact                                | Mitigation                                                                                         |
+| ------------------------------------------------------------------------ | ------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Figma reference inaccessible                                             | Visual fidelity to SmartHR unverified | Build on verified Nemo tokens (§2 of the design analysis); restyle once screenshots/exports arrive |
+| Nest 12 ecosystem lag (e.g. `nestjs-zod` supports only up to Swagger 11) | Would force a downgrade               | ADR-005: class-validator DTOs; no incompatible bridge                                              |
+| Prisma `latest` = 8.0.0-rc                                               | Accidental prerelease install         | Exact pin 7.10.1 for CLI and client; no `@latest` in scripts                                       |
+| Very new Node (26) and TS 7 line                                         | Tooling incompatibility               | Pin TS 5.9.3; Prisma supports Node ≥24; CI on Node 24 LTS                                          |
+| Tailwind 4 + Nemo CSS variables overlap                                  | Inconsistent styling                  | Tailwind for layout only; tokens for visuals (ADR-003)                                             |
+| Attendance/timezone correctness                                          | Wrong work dates, payroll errors      | UTC storage + company timezone config; explicit tests around midnight                              |
+| Payroll statutory rules unspecified                                      | Rework risk                           | Keep calculation components configurable; confirm jurisdiction before Phase 8                      |
+| No Figma/inventory access to charts                                      | Dashboard gaps                        | Defer charts to a dedicated decision in Phase 10                                                   |
+| Two validation sources (DTO + Zod)                                       | Drift                                 | Shared types package + contract tests in the API e2e suite                                         |
 
 ## Recommended next step
 
-**Phase 5 — Leave** is next and is not authorized yet. Phase 4 attendance is complete and verified;
-wait for explicit approval before starting leave quotas, balances, requests or the approval workflow.
-Known limitations (stubbed e2e throttling, unavailable Figma references, bundle size warning,
-development-only document storage) remain documented in `technical-decisions.md` and the module docs.
+**Phase 7 — Payroll** is the next logical scope, but it is not authorized. Phase 6 overtime now
+exposes verified minutes as the payroll contract; payroll should consume only `VERIFIED` requests and
+must not recalculate overtime from raw attendance. Statutory multipliers, PPh 21, BPJS, THR, and
+salary disbursement remain explicitly out of scope until a jurisdiction and written scope are
+approved. Known limitations (manual verification, no notification worker, stubbed e2e throttling,
+unavailable Figma references, development-only document storage, and half-day
+attendance recalculation) remain documented in `technical-decisions.md` and the module docs.

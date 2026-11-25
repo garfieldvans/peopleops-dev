@@ -251,6 +251,7 @@ export class AuthService {
     return {
       ...toUserSummary(record),
       permissions: effectivePermissions(record),
+      employeeId: record.employee?.id ?? null,
       session: {
         id: user.sessionId,
         expiresAt: user.sessionExpiresAt.toISOString(),

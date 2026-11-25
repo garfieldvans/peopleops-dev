@@ -27,7 +27,7 @@ Verify:
 - API health: <http://localhost:3001/api/v1/health> → `200` with `checks.database.status: "up"`
 - Swagger UI: <http://localhost:3001/api/docs>
 - Web app: <http://localhost:5173> → system status card, theme toggle, Nemo UI components
-- Worker: `pnpm --filter @peopleops/worker start:prod` → logs `Database reachable`, then exits (no jobs yet)
+- Worker: `pnpm --filter @peopleops/worker start:prod` → logs `Database reachable` and the scheduled leave/overtime jobs, then stays running
 
 If something else already listens on 3000/3001/5173, change `PORT` and `VITE_DEV_API_TARGET` in `.env`
 and start Vite with another port (`pnpm --filter @peopleops/web exec vite --port 5174`).
@@ -39,7 +39,7 @@ and start Vite with another port (`pnpm --filter @peopleops/web exec vite --port
 | `DATABASE_URL` | `postgresql://peopleops:peopleops_dev@localhost:5432/peopleops?schema=public` | API, worker, Prisma CLI |
 | `PORT` | `3001` | API |
 | `NODE_ENV` | `development` | API, worker |
-| `COMPANY_TIMEZONE` | `Asia/Jakarta` | API (health/reporting), later attendance and payroll |
+| `COMPANY_TIMEZONE` | `Asia/Jakarta` | API health/reporting default; company settings are the runtime source of truth |
 | `CORS_ORIGIN` | `http://localhost:5173` | API (comma-separated list allowed) |
 | `JWT_ACCESS_SECRET` | — (required, min 32 chars) | API access-token signing (`openssl rand -base64 48`) |
 | `JWT_ACCESS_TTL_SECONDS` | `900` | Access-token lifetime |
@@ -136,8 +136,14 @@ refresh cookie with reuse detection, users/roles/permissions modules, global aut
 guards, origin check, login throttling, audit log, seed, web login page, session bootstrap,
 protected routing and permission-aware navigation, Users and Roles screens.
 
-Not implemented (later phases): organization (branches/departments/positions), employees, attendance,
-leave, payroll, notifications, Redis, Kafka, Socket.IO, Nginx, Jenkins, deployment assets.
+Phases 3–6 (completed): organization (company, branches, departments, positions, job levels) and
+employees; attendance with schedules, shifts, holidays, corrections, calendar, dashboard and export;
+leave with policies, assignments, balances, requests, approvals, attachments, calendar, reports and
+daily accrual/expiry jobs; overtime with policies, assignments, approvals, actual/verified minutes,
+corrections, attachments, reports, export and daily housekeeping.
+
+Not implemented (later phases): payroll, performance/learning, notifications, Redis, Kafka, Socket.IO,
+Nginx, Jenkins, deployment assets.
 
 Tests: `pnpm test` (API unit + web Vitest) and `pnpm --filter @peopleops/api test:e2e` (auth, RBAC and
 users/roles flows against the `peopleops_test` schema).

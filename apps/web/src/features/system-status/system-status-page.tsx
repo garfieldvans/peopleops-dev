@@ -100,7 +100,7 @@ export function SystemStatusPage() {
               PeopleOps
             </Typography>
             <Typography variant="bodySmall" color="neutral">
-              Phase 1 — project foundation
+              Phases 1–6 — attendance, leave, and overtime
             </Typography>
           </Stack>
           <Stack direction="row" spacing={8} wrap>
@@ -154,7 +154,7 @@ export function SystemStatusPage() {
         </Card>
 
         <Typography variant="caption" color="neutral">
-          Business modules (authentication, employees, attendance, payroll) start in Phase 2.
+          Payroll, performance, and notifications are not part of the completed phases.
         </Typography>
       </Stack>
     </main>

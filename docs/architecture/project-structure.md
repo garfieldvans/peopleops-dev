@@ -1,6 +1,7 @@
 # PeopleOps — Project Structure
 
-Status: Phase 0 deliverable. Nothing here is scaffolded yet; Phase 1 creates it.
+Status: as built through Phase 6. The layout below is the current repository structure; historical
+phase notes remain where they explain a decision.
 
 ## 1. Top level
 
@@ -184,5 +185,5 @@ Deviations and details worth knowing:
 - `apps/web` declares `"type": "module"` so `vite.config.ts` is loaded as ESM (Vite 8 warns otherwise).
 - Root scripts orchestrate everything; there is no application code at the root.
 - `pnpm -r build` orders packages before apps because apps depend on them through `workspace:*`.
-- Tests are not configured in Phase 1 (no business logic yet); see the roadmap for when runners
-  arrive.
+- Tests are configured across the workspace: Jest for API units/e2e, Vitest for web and shared
+  packages. See the roadmap and module testing docs for coverage.

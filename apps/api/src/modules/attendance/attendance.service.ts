@@ -18,6 +18,7 @@ import {
 import { AuditService } from "../audit/audit.service";
 import { PrismaService } from "../../prisma/prisma.service";
 import { toPageMeta } from "../../common/dto/page-query.dto";
+import { csvCell } from "../../common/export/csv-cell";
 import type { RequestMeta } from "../../common/http/request-meta";
 import type { AuthenticatedUser } from "../../common/types/authenticated-user";
 import {
@@ -835,7 +836,7 @@ export class AttendanceService {
         String(record.workedMinutes),
         String(record.breakMinutesTaken),
       ]
-        .map(this.csvCell)
+        .map(csvCell)
         .join(",");
     });
 
@@ -1113,7 +1114,4 @@ export class AttendanceService {
     }
   }
 
-  private csvCell(value: string): string {
-    return /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
-  }
 }

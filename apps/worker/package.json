@@ -18,6 +18,7 @@
     "@peopleops/leave-engine": "workspace:*",
     "@peopleops/shared-types": "workspace:*",
     "@peopleops/validators": "workspace:*",
+    "cron": "^4.4.0",
     "dotenv": "^17.2.3",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",

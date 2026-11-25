@@ -9,6 +9,7 @@ import { ensureEntitlementPeriod, todayKey } from "@peopleops/leave-engine";
 import type { LeavePolicyAssignment, PaginatedResponse } from "@peopleops/shared-types";
 import { toPageMeta } from "../../common/dto/page-query.dto";
 import { PrismaService } from "../../prisma/prisma.service";
+import { AttendanceService } from "../attendance/attendance.service";
 import { AuditService } from "../audit/audit.service";
 import type {
   CreateLeavePolicyAssignmentDto,
@@ -40,6 +41,7 @@ export class LeaveAssignmentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly attendance: AttendanceService,
   ) {}
 
   async list(
@@ -176,8 +178,9 @@ export class LeaveAssignmentsService {
 
       // Generate the current period immediately so the employee sees a balance
       // without waiting for the next worker run.
+      const today = await this.companyToday();
       for (const assignmentId of created) {
-        await ensureEntitlementPeriod(this.prisma, assignmentId, todayKey());
+        await ensureEntitlementPeriod(this.prisma, assignmentId, today);
       }
 
       await this.audit.record({
@@ -200,6 +203,10 @@ export class LeaveAssignmentsService {
       }
       throw error;
     }
+  }
+
+  private async companyToday(): Promise<string> {
+    return todayKey(await this.attendance.getCompanyTimezone());
   }
 
   async update(
@@ -260,7 +267,7 @@ export class LeaveAssignmentsService {
       include: leaveAssignmentInclude,
     });
     if (row.status === "ACTIVE") {
-      await ensureEntitlementPeriod(this.prisma, row.id, todayKey());
+      await ensureEntitlementPeriod(this.prisma, row.id, await this.companyToday());
     }
     await this.audit.record({
       actorUserId: actor.actorUserId,

@@ -23,6 +23,7 @@ export function toCurrentUser(user: UserWithRoles, session: UserSession): Curren
   return {
     ...toUserSummary(user),
     permissions: effectivePermissions(user),
+    employeeId: user.employee?.id ?? null,
     session: {
       id: session.id,
       expiresAt: session.expiresAt.toISOString(),

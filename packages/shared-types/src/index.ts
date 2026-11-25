@@ -132,6 +132,21 @@ export const PERMISSIONS = {
   LEAVE_TRANSACTION_READ: "leave_transaction.read",
   LEAVE_TRANSACTION_READ_ALL: "leave_transaction.read_all",
   LEAVE_REPORT_READ: "leave_report.read",
+  OVERTIME_READ_SELF: "overtime.read.self",
+  OVERTIME_CREATE: "overtime.create",
+  OVERTIME_UPDATE_SELF: "overtime.update.self",
+  OVERTIME_WITHDRAW_SELF: "overtime.withdraw.self",
+  OVERTIME_READ_TEAM: "overtime.read.team",
+  OVERTIME_APPROVE: "overtime.approve",
+  OVERTIME_REJECT: "overtime.reject",
+  OVERTIME_READ_ALL: "overtime.read.all",
+  OVERTIME_MANAGE: "overtime.manage",
+  OVERTIME_VERIFY: "overtime.verify",
+  OVERTIME_CORRECT: "overtime.correct",
+  OVERTIME_EXPORT: "overtime.export",
+  OVERTIME_POLICY_READ: "overtime.policy.read",
+  OVERTIME_POLICY_MANAGE: "overtime.policy.manage",
+  OVERTIME_ASSIGNMENT_MANAGE: "overtime.assignment.manage",
 } as const;
 
 export type PermissionCode = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -188,6 +203,7 @@ export interface SessionInfo {
 /** Response of GET /auth/me and the user payload returned by login/refresh. */
 export interface CurrentUser extends UserSummary {
   permissions: string[];
+  employeeId: string | null;
   session: SessionInfo;
 }
 
@@ -718,10 +734,7 @@ export type LeaveDurationUnit = "DAY" | "HOUR";
 export const LEAVE_DURATION_UNITS: readonly LeaveDurationUnit[] = ["DAY", "HOUR"];
 
 export type LeaveAccrualMethod =
-  | "GRANTED_UPFRONT"
-  | "MONTHLY_ACCRUAL"
-  | "ANNUAL_ACCRUAL"
-  | "MANUAL_GRANT";
+  "GRANTED_UPFRONT" | "MONTHLY_ACCRUAL" | "ANNUAL_ACCRUAL" | "MANUAL_GRANT";
 export const LEAVE_ACCRUAL_METHODS: readonly LeaveAccrualMethod[] = [
   "GRANTED_UPFRONT",
   "MONTHLY_ACCRUAL",
@@ -753,12 +766,7 @@ export type LeaveApprovalStage = "MANAGER" | "HR";
 export const LEAVE_APPROVAL_STAGES: readonly LeaveApprovalStage[] = ["MANAGER", "HR"];
 
 export type LeaveRequestStatus =
-  | "DRAFT"
-  | "PENDING"
-  | "APPROVED"
-  | "REJECTED"
-  | "CANCELLED"
-  | "WITHDRAWN";
+  "DRAFT" | "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED" | "WITHDRAWN";
 export const LEAVE_REQUEST_STATUSES: readonly LeaveRequestStatus[] = [
   "DRAFT",
   "PENDING",
@@ -769,17 +777,10 @@ export const LEAVE_REQUEST_STATUSES: readonly LeaveRequestStatus[] = [
 ];
 
 export type LeaveRequestMode = "FULL_DAY" | "HALF_DAY" | "HOURLY";
-export const LEAVE_REQUEST_MODES: readonly LeaveRequestMode[] = [
-  "FULL_DAY",
-  "HALF_DAY",
-  "HOURLY",
-];
+export const LEAVE_REQUEST_MODES: readonly LeaveRequestMode[] = ["FULL_DAY", "HALF_DAY", "HOURLY"];
 
 export type LeaveHalfDayPeriod = "FIRST_HALF" | "SECOND_HALF";
-export const LEAVE_HALF_DAY_PERIODS: readonly LeaveHalfDayPeriod[] = [
-  "FIRST_HALF",
-  "SECOND_HALF",
-];
+export const LEAVE_HALF_DAY_PERIODS: readonly LeaveHalfDayPeriod[] = ["FIRST_HALF", "SECOND_HALF"];
 
 export type LeaveTransactionType =
   | "OPENING_BALANCE"
@@ -1029,4 +1030,217 @@ export interface LeaveReportSummary {
   rejectedCount: number;
   totalDays: number;
   rows: LeaveReportRow[];
+}
+
+// ---------------------------------------------------------------------------
+// Overtime
+// ---------------------------------------------------------------------------
+
+export type OvertimeCategory = "WEEKDAY" | "WEEKEND" | "HOLIDAY" | "REST_DAY";
+export const OVERTIME_CATEGORIES: readonly OvertimeCategory[] = [
+  "WEEKDAY",
+  "WEEKEND",
+  "HOLIDAY",
+  "REST_DAY",
+];
+
+export type OvertimeApprovalMode = "MANAGER" | "HR" | "MANAGER_AND_HR";
+export const OVERTIME_APPROVAL_MODES: readonly OvertimeApprovalMode[] = [
+  "MANAGER",
+  "HR",
+  "MANAGER_AND_HR",
+];
+
+export type OvertimeApprovalStage = "MANAGER" | "HR";
+export const OVERTIME_APPROVAL_STAGES: readonly OvertimeApprovalStage[] = ["MANAGER", "HR"];
+
+export type OvertimeStatus =
+  | "DRAFT"
+  | "PENDING_MANAGER_APPROVAL"
+  | "PENDING_HR_APPROVAL"
+  | "APPROVED"
+  | "REJECTED"
+  | "WITHDRAWN"
+  | "PENDING_VERIFICATION"
+  | "VERIFIED"
+  | "CANCELLED";
+export const OVERTIME_STATUSES: readonly OvertimeStatus[] = [
+  "DRAFT",
+  "PENDING_MANAGER_APPROVAL",
+  "PENDING_HR_APPROVAL",
+  "APPROVED",
+  "REJECTED",
+  "WITHDRAWN",
+  "PENDING_VERIFICATION",
+  "VERIFIED",
+  "CANCELLED",
+];
+
+export type OvertimeRoundingStrategy = "NONE" | "ROUND_DOWN" | "ROUND_UP" | "NEAREST";
+export const OVERTIME_ROUNDING_STRATEGIES: readonly OvertimeRoundingStrategy[] = [
+  "NONE",
+  "ROUND_DOWN",
+  "ROUND_UP",
+  "NEAREST",
+];
+
+export interface OvertimePolicySnapshot {
+  policyId: string;
+  code: string;
+  name: string;
+  approvalMode: OvertimeApprovalMode;
+  minMinutes: number;
+  maxMinutes: number;
+  roundingStrategy: OvertimeRoundingStrategy;
+  roundingMinutes: number;
+  requiresAttachment: boolean;
+}
+
+export interface OvertimePolicy {
+  id: string;
+  name: string;
+  code: string;
+  description: string | null;
+  status: MasterStatus;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+  minMinutes: number;
+  maxMinutes: number;
+  roundingStrategy: OvertimeRoundingStrategy;
+  roundingMinutes: number;
+  approvalMode: OvertimeApprovalMode;
+  requiresAttachment: boolean;
+  allowWeekend: boolean;
+  allowHoliday: boolean;
+  eligibleEmploymentStatuses: EmploymentStatus[];
+  assignmentCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type OvertimeAssignmentScope = "EMPLOYEE" | "DEPARTMENT" | "BRANCH";
+
+export interface OvertimePolicyAssignment {
+  id: string;
+  scope: OvertimeAssignmentScope;
+  policy: { id: string; name: string; code: string };
+  employee: { id: string; employeeNumber: string; fullName: string } | null;
+  department: NamedRef | null;
+  branch: NamedRef | null;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+  notes: string | null;
+  createdAt: string;
+}
+
+export interface OvertimeApproval {
+  id: string;
+  stage: OvertimeApprovalStage;
+  decision: "APPROVED" | "REJECTED";
+  approver: { id: string; name: string } | null;
+  approverName: string;
+  comment: string | null;
+  isOverride: boolean;
+  createdAt: string;
+}
+
+export interface OvertimeCorrection {
+  id: string;
+  previousValue: number;
+  correctedValue: number;
+  reason: string;
+  correctedBy: { id: string; name: string } | null;
+  createdAt: string;
+}
+
+export interface OvertimeAttachment {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  uploadedBy: { id: string; name: string } | null;
+  createdAt: string;
+}
+
+export interface OvertimeRequest {
+  id: string;
+  employeeId: string;
+  employeeNumber: string;
+  employeeName: string;
+  department: NamedRef | null;
+  branch: NamedRef | null;
+  policy: { id: string; name: string; code: string };
+  policySnapshot: OvertimePolicySnapshot;
+  attendanceRecordId: string | null;
+  workDate: string;
+  category: OvertimeCategory;
+  reason: string;
+  plannedStartAt: string;
+  plannedEndAt: string;
+  plannedBreakMinutes: number;
+  actualStartAt: string | null;
+  actualEndAt: string | null;
+  actualBreakMinutes: number | null;
+  requestedMinutes: number;
+  actualMinutes: number | null;
+  verifiedMinutes: number | null;
+  approvedMinutes: number | null;
+  status: OvertimeStatus;
+  approvalStage: OvertimeApprovalStage | null;
+  submittedAt: string | null;
+  completedAt: string | null;
+  verifiedAt: string | null;
+  verifier: { id: string; name: string } | null;
+  cancelledAt: string | null;
+  cancelledBy: { id: string; name: string } | null;
+  cancellationReason: string | null;
+  approvals: OvertimeApproval[];
+  corrections: OvertimeCorrection[];
+  attachments: OvertimeAttachment[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** List rows omit approval, correction, and attachment collections. */
+export type OvertimeRequestListItem = Omit<
+  OvertimeRequest,
+  "approvals" | "corrections" | "attachments"
+>;
+
+export interface OvertimeDashboard {
+  date: string;
+  employee: { id: string; employeeNumber: string; fullName: string };
+  myPending: number;
+  myApproved: number;
+  myPendingVerification: number;
+  myVerifiedThisMonth: number;
+  verifiedMinutesThisMonth: number;
+  pendingApprovals: number;
+  pendingVerification: number;
+  recent: OvertimeRequestListItem[];
+}
+
+export interface OvertimeSummaryRow {
+  employeeId: string;
+  employeeNumber: string;
+  employeeName: string;
+  department: string | null;
+  branch: string | null;
+  requestCount: number;
+  requestedMinutes: number;
+  actualMinutes: number;
+  verifiedMinutes: number;
+}
+
+export interface OvertimeSummary {
+  from: string;
+  to: string;
+  requestCount: number;
+  pendingApprovals: number;
+  pendingVerification: number;
+  verifiedCount: number;
+  requestedMinutes: number;
+  actualMinutes: number;
+  verifiedMinutes: number;
+  rows: OvertimeSummaryRow[];
 }

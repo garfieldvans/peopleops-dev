@@ -1,6 +1,6 @@
 # PeopleOps — System Overview
 
-Status: Phase 0 deliverable. Describes the intended system; no application code exists yet.
+Status: updated after Phase 6. Phases 1–6 are implemented; later modules remain design targets.
 
 ## 1. Purpose
 
@@ -12,13 +12,13 @@ tenant onboarding. The single company has branches, departments, positions and e
 
 ## 2. Actors
 
-| Actor | Primary needs |
-| --- | --- |
-| System administrator | Accounts, roles, permissions, audit review, system configuration |
-| HR administrator | Employee records, organization structure, attendance, leave, documents |
-| Manager | Team roster, attendance/leave/overtime approvals, team reports |
-| Employee | Own profile, clock in/out, leave and overtime requests, own payslips |
-| Payroll officer | Salary components, payroll periods, payroll runs, payslips |
+| Actor                | Primary needs                                                          |
+| -------------------- | ---------------------------------------------------------------------- |
+| System administrator | Accounts, roles, permissions, audit review, system configuration       |
+| HR administrator     | Employee records, organization structure, attendance, leave, documents |
+| Manager              | Team roster, attendance/leave/overtime approvals, team reports         |
+| Employee             | Own profile, clock in/out, leave and overtime requests, own payslips   |
+| Payroll officer      | Salary components, payroll periods, payroll runs, payslips             |
 
 Employee and User are **separate entities** (see `docs/database/erd.md`). A person may be an
 employee without an account; an account may exist without being an employee.
@@ -40,6 +40,10 @@ Browser
   │
   └── apps/worker     no HTTP surface; shares packages/database
 ```
+
+The worker currently runs leave accrual/carry-over/expiry at 01:00 and read-only overtime
+housekeeping at 02:00 in the company timezone read from the database. It shares the database
+package and has no HTTP surface.
 
 Deferred infrastructure (intentionally not in Phase 1):
 
@@ -80,26 +84,27 @@ Rules that keep the boundaries real:
 
 ## 5. Module map and ownership
 
-| Module | Owns (tables) | Depends on |
-| --- | --- | --- |
-| `auth` | user_credentials, sessions, refresh_tokens | users |
-| `users` | users, roles, permissions, role_permissions, user_roles | — |
-| `organization` | branches, departments, positions | — |
-| `employees` | employees, employment_contracts, employee_salary, employee_documents | organization, users (account link) |
-| `attendance` | attendance_records, attendance_corrections | employees, organization |
-| `leave` | leave_types, leave_balances, leave_balance_transactions, leave_requests | employees, approval |
-| `overtime` | overtime_requests | employees, approval |
-| `approval` | approval_requests, approval_steps, approval_delegations | users (approver identity) |
-| `payroll` | payroll_periods, payroll_runs, payslips, payslip_lines, salary_components | employees, attendance, leave, overtime |
-| `performance` | review_cycles, reviews, goals | employees |
-| `learning` | courses, course_sessions, enrollments | employees |
-| `notifications` | notifications | users |
-| `reports` | (no tables; read models) | query services exposed by other modules |
-| `audit` | audit_logs | — (written by all modules through an interceptor/service) |
+| Module          | Owns (tables)                                                                                                                     | Depends on                                                |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| `auth`          | user_credentials, sessions, refresh_tokens                                                                                        | users                                                     |
+| `users`         | users, roles, permissions, role_permissions, user_roles                                                                           | —                                                         |
+| `organization`  | branches, departments, positions                                                                                                  | —                                                         |
+| `employees`     | employees, employment_contracts, employee_salary, employee_documents                                                              | organization, users (account link)                        |
+| `attendance`    | attendance_records, attendance_corrections                                                                                        | employees, organization                                   |
+| `leave`         | leave_types, leave_policies, leave_assignments, leave_balances, leave_transactions, leave_requests                                | employees, attendance                                     |
+| `overtime`      | overtime_policies, overtime_policy_assignments, overtime_requests, overtime_approvals, overtime_corrections, overtime_attachments | employees, attendance, leave                              |
+| `payroll`       | payroll_periods, payroll_runs, payslips, payslip_lines, salary_components                                                         | employees, attendance, leave, overtime                    |
+| `performance`   | review_cycles, reviews, goals                                                                                                     | employees                                                 |
+| `learning`      | courses, course_sessions, enrollments                                                                                             | employees                                                 |
+| `notifications` | notifications                                                                                                                     | users                                                     |
+| `reports`       | (no tables; read models)                                                                                                          | query services exposed by other modules                   |
+| `audit`         | audit_logs                                                                                                                        | — (written by all modules through an interceptor/service) |
 
 Dependency direction is acyclic; `employees` and `organization` are the foundation, `reports` is a
-leaf. `approval` is generic over the request type (`subjectType` + `subjectId`) so leave and overtime
-do not own duplicated approval logic.
+leaf. Phase 6 deliberately keeps overtime approval rows inside the overtime module
+(`overtime_approvals` with a `MANAGER`/`HR` stage) rather than introducing a generic workflow engine.
+Leave still uses its own approval rows. A shared approval module remains a future option, not a
+current dependency.
 
 ## 6. Cross-cutting concerns
 
@@ -120,6 +125,12 @@ do not own duplicated approval logic.
 - **Files**: employee documents and attachments go through a `StorageService` abstraction. Local
   disk in development, S3-compatible object storage in production. Never served by public URL;
   access is authorized and streamed/proxied.
+- **Overtime evidence**: requested, actual, and verified minutes are separate fields. Approval sets
+  `approvedMinutes`; completion records actual evidence; only verification sets `verifiedMinutes`.
+  Overtime never mutates attendance or leave. Approved leave on the same work date blocks a new
+  request, and attendance clock-out may supply the actual window without overwriting the record.
+- **Effective-dated policy**: overtime stores a JSON policy snapshot on each request so later policy
+  edits cannot rewrite history. Assignment precedence is employee, then department, then branch.
 
 ## 7. Frontend shape
 
@@ -137,7 +148,8 @@ src/
 Server state lives in TanStack Query; Zustand is reserved for genuine client-only state (sidebar
 state, unsaved form wizards). Forms use React Hook Form + Zod. UI is built on `@nemo-ui/ui`, with
 project-specific components only where the library has no equivalent
-(see `docs/design/ui-library-inventory.md`).
+(see `docs/design/ui-library-inventory.md`). Route pages are lazy-loaded behind `Suspense`, so the
+app shell stays mounted while a page chunk loads.
 
 ## 8. Quality gates
 

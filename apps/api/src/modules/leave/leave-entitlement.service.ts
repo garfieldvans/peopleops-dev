@@ -20,6 +20,7 @@ import { PERMISSIONS } from "@peopleops/shared-types";
 import type { LeaveBalance, LeaveTransaction, PaginatedResponse } from "@peopleops/shared-types";
 import { toPageMeta } from "../../common/dto/page-query.dto";
 import { PrismaService } from "../../prisma/prisma.service";
+import { AttendanceService } from "../attendance/attendance.service";
 import { AuditService } from "../audit/audit.service";
 import { EmployeesService } from "../employee/employees.service";
 import type { AuthenticatedUser } from "../../common/types/authenticated-user";
@@ -101,6 +102,7 @@ export class LeaveEntitlementService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly employees: EmployeesService,
+    private readonly attendance: AttendanceService,
   ) {}
 
   async getLinkedEmployee(userId: string): Promise<EmployeeRef> {
@@ -257,18 +259,19 @@ export class LeaveEntitlementService {
     };
   }
 
-  async myBalances(user: AuthenticatedUser, asOf = todayKey()): Promise<LeaveBalance[]> {
+  async myBalances(user: AuthenticatedUser, asOf?: string): Promise<LeaveBalance[]> {
     const employee = await this.getLinkedEmployee(user.id);
     return this.balancesForEmployee(employee.id, asOf);
   }
 
-  async balancesForEmployee(employeeId: string, asOf = todayKey()): Promise<LeaveBalance[]> {
+  async balancesForEmployee(employeeId: string, asOf?: string): Promise<LeaveBalance[]> {
+    const date = asOf ?? (await this.companyToday());
     const assignments = await this.prisma.leavePolicyAssignment.findMany({
       where: {
         employeeId,
         status: "ACTIVE",
-        effectiveFrom: { lte: new Date(`${asOf}T00:00:00.000Z`) },
-        OR: [{ effectiveTo: null }, { effectiveTo: { gte: new Date(`${asOf}T00:00:00.000Z`) } }],
+        effectiveFrom: { lte: new Date(`${date}T00:00:00.000Z`) },
+        OR: [{ effectiveTo: null }, { effectiveTo: { gte: new Date(`${date}T00:00:00.000Z`) } }],
       },
       select: { leaveTypeId: true },
       orderBy: { effectiveFrom: "desc" },
@@ -276,10 +279,14 @@ export class LeaveEntitlementService {
     const typeIds = unique(assignments.map((assignment) => assignment.leaveTypeId));
     const balances: LeaveBalance[] = [];
     for (const leaveTypeId of typeIds) {
-      const balance = await this.getBalance(employeeId, leaveTypeId, asOf);
+      const balance = await this.getBalance(employeeId, leaveTypeId, date);
       if (balance) balances.push(balance);
     }
     return balances;
+  }
+
+  private async companyToday(): Promise<string> {
+    return todayKey(await this.attendance.getCompanyTimezone());
   }
 
   async listBalances(
@@ -287,7 +294,7 @@ export class LeaveEntitlementService {
     user: AuthenticatedUser,
   ): Promise<PaginatedResponse<LeaveBalance>> {
     const ids = await this.accessibleEmployeeIds(user);
-    const asOf = query.asOf ?? todayKey();
+    const asOf = query.asOf ?? (await this.companyToday());
     const where: Prisma.LeavePolicyAssignmentWhereInput = {
       status: "ACTIVE",
       effectiveFrom: { lte: new Date(`${asOf}T00:00:00.000Z`) },

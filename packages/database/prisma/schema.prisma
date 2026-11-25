@@ -1,9 +1,8 @@
 // PeopleOps database schema.
 //
-// Phase 2 adds authentication and RBAC. Phase 3 adds the organization structure
-// (company, branches, departments, positions, job levels) and employees.
-// Attendance, leave, payroll and performance tables arrive with their modules.
-// See docs/database/erd.md.
+// Phases 1–6: authentication/RBAC, organization and employees, attendance,
+// leave, and overtime. Payroll, performance, and notification tables arrive
+// with their modules. See docs/database/erd.md.
 //
 // Prisma 7 requires a driver adapter at runtime; the connection is created in
 // packages/database/src/index.ts (@prisma/adapter-pg).
@@ -37,17 +36,23 @@ model User {
   /// A login account exists independently of an employee record; the link is optional.
   employee Employee?
 
-  employmentHistoriesCreated EmploymentHistory[]          @relation("EmploymentHistoryCreator")
-  documentsUploaded          EmployeeDocument[]           @relation("EmployeeDocumentUploader")
-  scheduleAssignmentsCreated EmployeeScheduleAssignment[] @relation("ScheduleAssignmentCreator")
-  attendanceBreaksCreated    AttendanceBreak[]            @relation("AttendanceBreakCreator")
-  correctionsReviewed        AttendanceCorrection[]       @relation("AttendanceCorrectionReviewer")
-  leaveAssignmentsCreated    LeavePolicyAssignment[]      @relation("LeaveAssignmentCreator")
-  leaveTransactionsCreated   LeaveTransaction[]           @relation("LeaveTransactionCreator")
-  leaveApprovals             LeaveRequestApproval[]       @relation("LeaveApprovalActor")
-  leaveRequestsReviewed      LeaveRequest[]               @relation("LeaveRequestReviewer")
-  leaveRequestsCancelled     LeaveRequest[]               @relation("LeaveRequestCanceller")
-  leaveAttachmentsUploaded   LeaveAttachment[]            @relation("LeaveAttachmentUploader")
+  employmentHistoriesCreated  EmploymentHistory[]          @relation("EmploymentHistoryCreator")
+  documentsUploaded           EmployeeDocument[]           @relation("EmployeeDocumentUploader")
+  scheduleAssignmentsCreated  EmployeeScheduleAssignment[] @relation("ScheduleAssignmentCreator")
+  attendanceBreaksCreated     AttendanceBreak[]            @relation("AttendanceBreakCreator")
+  correctionsReviewed         AttendanceCorrection[]       @relation("AttendanceCorrectionReviewer")
+  leaveAssignmentsCreated     LeavePolicyAssignment[]      @relation("LeaveAssignmentCreator")
+  leaveTransactionsCreated    LeaveTransaction[]           @relation("LeaveTransactionCreator")
+  leaveApprovals              LeaveRequestApproval[]       @relation("LeaveApprovalActor")
+  leaveRequestsReviewed       LeaveRequest[]               @relation("LeaveRequestReviewer")
+  leaveRequestsCancelled      LeaveRequest[]               @relation("LeaveRequestCanceller")
+  leaveAttachmentsUploaded    LeaveAttachment[]            @relation("LeaveAttachmentUploader")
+  overtimeAssignmentsCreated  OvertimePolicyAssignment[]   @relation("OvertimeAssignmentCreator")
+  overtimeApprovals           OvertimeApproval[]           @relation("OvertimeApprovalActor")
+  overtimeRequestsVerified    OvertimeRequest[]            @relation("OvertimeRequestVerifier")
+  overtimeRequestsCancelled   OvertimeRequest[]            @relation("OvertimeRequestCanceller")
+  overtimeCorrections         OvertimeCorrection[]         @relation("OvertimeCorrectionActor")
+  overtimeAttachmentsUploaded OvertimeAttachment[]         @relation("OvertimeAttachmentUploader")
 
   @@map("users")
 }
@@ -234,10 +239,11 @@ model Branch {
   createdAt  DateTime     @default(now()) @map("created_at")
   updatedAt  DateTime     @updatedAt @map("updated_at")
 
-  departments Department[]
-  employees   Employee[]
-  history     EmploymentHistory[]
-  holidays    Holiday[]
+  departments         Department[]
+  employees           Employee[]
+  history             EmploymentHistory[]
+  holidays            Holiday[]
+  overtimeAssignments OvertimePolicyAssignment[]
 
   @@index([status])
   @@map("branches")
@@ -275,13 +281,14 @@ model Department {
   createdAt      DateTime     @default(now()) @map("created_at")
   updatedAt      DateTime     @updatedAt @map("updated_at")
 
-  branch    Branch?             @relation(fields: [branchId], references: [id], onDelete: Restrict)
-  parent    Department?         @relation("DepartmentHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
-  children  Department[]        @relation("DepartmentHierarchy")
-  head      Employee?           @relation("DepartmentHead", fields: [headEmployeeId], references: [id], onDelete: SetNull)
-  positions Position[]
-  employees Employee[]
-  history   EmploymentHistory[]
+  branch              Branch?                    @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  parent              Department?                @relation("DepartmentHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+  children            Department[]               @relation("DepartmentHierarchy")
+  head                Employee?                  @relation("DepartmentHead", fields: [headEmployeeId], references: [id], onDelete: SetNull)
+  positions           Position[]
+  employees           Employee[]
+  history             EmploymentHistory[]
+  overtimeAssignments OvertimePolicyAssignment[]
 
   @@index([parentId])
   @@index([branchId])
@@ -369,6 +376,8 @@ model Employee {
   leaveTransactions     LeaveTransaction[]
   leaveRequests         LeaveRequest[]
   leaveReservations     LeaveBalanceReservation[]
+  overtimeAssignments   OvertimePolicyAssignment[]
+  overtimeRequests      OvertimeRequest[]
 
   @@index([lastName, firstName])
   @@index([branchId])
@@ -592,12 +601,13 @@ model AttendanceRecord {
   createdAt            DateTime         @default(now()) @map("created_at")
   updatedAt            DateTime         @updatedAt @map("updated_at")
 
-  employee     Employee                    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  assignment   EmployeeScheduleAssignment? @relation(fields: [scheduleAssignmentId], references: [id], onDelete: SetNull)
-  workSchedule WorkSchedule?               @relation(fields: [workScheduleId], references: [id], onDelete: SetNull)
-  shift        Shift?                      @relation(fields: [shiftId], references: [id], onDelete: SetNull)
-  breaks       AttendanceBreak[]
-  corrections  AttendanceCorrection[]
+  employee         Employee                    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  assignment       EmployeeScheduleAssignment? @relation(fields: [scheduleAssignmentId], references: [id], onDelete: SetNull)
+  workSchedule     WorkSchedule?               @relation(fields: [workScheduleId], references: [id], onDelete: SetNull)
+  shift            Shift?                      @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  breaks           AttendanceBreak[]
+  corrections      AttendanceCorrection[]
+  overtimeRequests OvertimeRequest[]
 
   @@unique([employeeId, workDate])
   @@index([workDate, status])
@@ -1039,4 +1049,213 @@ model LeaveAttachment {
 
   @@index([requestId])
   @@map("leave_attachments")
+}
+
+// ---------------------------------------------------------------------------
+// Phase 6 — Overtime management
+// ---------------------------------------------------------------------------
+
+enum OvertimeCategory {
+  WEEKDAY
+  WEEKEND
+  HOLIDAY
+  REST_DAY
+}
+
+enum OvertimeApprovalMode {
+  MANAGER
+  HR
+  MANAGER_AND_HR
+}
+
+enum OvertimeApprovalStage {
+  MANAGER
+  HR
+}
+
+enum OvertimeApprovalDecision {
+  APPROVED
+  REJECTED
+}
+
+enum OvertimeStatus {
+  DRAFT
+  PENDING_MANAGER_APPROVAL
+  PENDING_HR_APPROVAL
+  APPROVED
+  REJECTED
+  WITHDRAWN
+  PENDING_VERIFICATION
+  VERIFIED
+  CANCELLED
+}
+
+enum OvertimeRoundingStrategy {
+  NONE
+  ROUND_DOWN
+  ROUND_UP
+  NEAREST
+}
+
+/// Versioned rules. Requests snapshot the policy used at submission so later
+/// edits cannot rewrite history.
+model OvertimePolicy {
+  id                         String                   @id @default(uuid()) @db.Uuid
+  name                       String
+  code                       String                   @unique
+  description                String?
+  status                     MasterStatus             @default(ACTIVE)
+  effectiveFrom              DateTime                 @map("effective_from") @db.Date
+  effectiveTo                DateTime?                @map("effective_to") @db.Date
+  minMinutes                 Int                      @default(30) @map("min_minutes")
+  maxMinutes                 Int                      @default(240) @map("max_minutes")
+  roundingStrategy           OvertimeRoundingStrategy @default(NONE) @map("rounding_strategy")
+  roundingMinutes            Int                      @default(15) @map("rounding_minutes")
+  approvalMode               OvertimeApprovalMode     @default(MANAGER) @map("approval_mode")
+  requiresAttachment         Boolean                  @default(false) @map("requires_attachment")
+  allowWeekend               Boolean                  @default(false) @map("allow_weekend")
+  allowHoliday               Boolean                  @default(false) @map("allow_holiday")
+  eligibleEmploymentStatuses EmploymentStatus[]       @default([]) @map("eligible_employment_statuses")
+  createdAt                  DateTime                 @default(now()) @map("created_at")
+  updatedAt                  DateTime                 @updatedAt @map("updated_at")
+
+  assignments OvertimePolicyAssignment[]
+  requests    OvertimeRequest[]
+
+  @@index([status, effectiveFrom])
+  @@map("overtime_policies")
+}
+
+/// Exactly one of employee/department/branch is set. Overlap checks live in the
+/// service because Prisma cannot express a partial exclusion constraint.
+/// DB checks enforce exactly one of employee/department/branch and a valid effective range.
+model OvertimePolicyAssignment {
+  id            String    @id @default(uuid()) @db.Uuid
+  policyId      String    @map("policy_id") @db.Uuid
+  employeeId    String?   @map("employee_id") @db.Uuid
+  departmentId  String?   @map("department_id") @db.Uuid
+  branchId      String?   @map("branch_id") @db.Uuid
+  effectiveFrom DateTime  @map("effective_from") @db.Date
+  effectiveTo   DateTime? @map("effective_to") @db.Date
+  notes         String?
+  createdById   String?   @map("created_by_id") @db.Uuid
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  policy     OvertimePolicy @relation(fields: [policyId], references: [id], onDelete: Restrict)
+  employee   Employee?      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  department Department?    @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  branch     Branch?        @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  createdBy  User?          @relation("OvertimeAssignmentCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([policyId, effectiveFrom])
+  @@index([employeeId, effectiveFrom, effectiveTo])
+  @@index([departmentId, effectiveFrom, effectiveTo])
+  @@index([branchId, effectiveFrom, effectiveTo])
+  @@map("overtime_policy_assignments")
+}
+
+model OvertimeRequest {
+  id                  String                 @id @default(uuid()) @db.Uuid
+  employeeId          String                 @map("employee_id") @db.Uuid
+  policyId            String                 @map("policy_id") @db.Uuid
+  attendanceRecordId  String?                @map("attendance_record_id") @db.Uuid
+  clientRequestId     String?                @map("client_request_id") @db.VarChar(100)
+  workDate            DateTime               @map("work_date") @db.Date
+  category            OvertimeCategory
+  reason              String
+  plannedStartAt      DateTime               @map("planned_start_at")
+  plannedEndAt        DateTime               @map("planned_end_at")
+  plannedBreakMinutes Int                    @default(0) @map("planned_break_minutes")
+  actualStartAt       DateTime?              @map("actual_start_at")
+  actualEndAt         DateTime?              @map("actual_end_at")
+  actualBreakMinutes  Int?                   @map("actual_break_minutes")
+  requestedMinutes    Int                    @map("requested_minutes")
+  actualMinutes       Int?                   @map("actual_minutes")
+  verifiedMinutes     Int?                   @map("verified_minutes")
+  approvedMinutes     Int?                   @map("approved_minutes")
+  status              OvertimeStatus         @default(DRAFT)
+  approvalStage       OvertimeApprovalStage? @map("approval_stage")
+  policySnapshot      Json                   @map("policy_snapshot")
+  submittedAt         DateTime?              @map("submitted_at")
+  completedAt         DateTime?              @map("completed_at")
+  verifiedAt          DateTime?              @map("verified_at")
+  verifiedById        String?                @map("verified_by_id") @db.Uuid
+  cancelledAt         DateTime?              @map("cancelled_at")
+  cancelledById       String?                @map("cancelled_by_id") @db.Uuid
+  cancellationReason  String?                @map("cancellation_reason")
+  createdAt           DateTime               @default(now()) @map("created_at")
+  updatedAt           DateTime               @updatedAt @map("updated_at")
+
+  employee         Employee             @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  policy           OvertimePolicy       @relation(fields: [policyId], references: [id], onDelete: Restrict)
+  attendanceRecord AttendanceRecord?    @relation(fields: [attendanceRecordId], references: [id], onDelete: SetNull)
+  verifier         User?                @relation("OvertimeRequestVerifier", fields: [verifiedById], references: [id], onDelete: SetNull)
+  cancelledBy      User?                @relation("OvertimeRequestCanceller", fields: [cancelledById], references: [id], onDelete: SetNull)
+  approvals        OvertimeApproval[]
+  corrections      OvertimeCorrection[]
+  attachments      OvertimeAttachment[]
+
+  @@unique([employeeId, clientRequestId])
+  @@index([employeeId, status])
+  @@index([employeeId, plannedStartAt, plannedEndAt])
+  @@index([status, createdAt])
+  @@index([workDate, status])
+  @@index([policyId])
+  @@index([attendanceRecordId])
+  @@map("overtime_requests")
+}
+
+/// Append-only decision history. Rows are never updated or deleted.
+model OvertimeApproval {
+  id             String                   @id @default(uuid()) @db.Uuid
+  requestId      String                   @map("request_id") @db.Uuid
+  stage          OvertimeApprovalStage
+  decision       OvertimeApprovalDecision
+  approverUserId String?                  @map("approver_user_id") @db.Uuid
+  approverName   String                   @map("approver_name")
+  comment        String?
+  isOverride     Boolean                  @default(false) @map("is_override")
+  createdAt      DateTime                 @default(now()) @map("created_at")
+
+  request  OvertimeRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  approver User?           @relation("OvertimeApprovalActor", fields: [approverUserId], references: [id], onDelete: SetNull)
+
+  @@index([requestId, createdAt])
+  @@index([approverUserId])
+  @@map("overtime_approvals")
+}
+
+/// Immutable trail for changes to verified minutes.
+model OvertimeCorrection {
+  id             String   @id @default(uuid()) @db.Uuid
+  requestId      String   @map("request_id") @db.Uuid
+  previousValue  Int      @map("previous_value")
+  correctedValue Int      @map("corrected_value")
+  reason         String
+  correctedById  String?  @map("corrected_by_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  request     OvertimeRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  correctedBy User?           @relation("OvertimeCorrectionActor", fields: [correctedById], references: [id], onDelete: SetNull)
+
+  @@index([requestId, createdAt])
+  @@map("overtime_corrections")
+}
+
+model OvertimeAttachment {
+  id           String   @id @default(uuid()) @db.Uuid
+  requestId    String   @map("request_id") @db.Uuid
+  fileName     String   @map("file_name")
+  mimeType     String   @map("mime_type")
+  sizeBytes    Int      @map("size_bytes")
+  storageKey   String   @unique @map("storage_key")
+  uploadedById String?  @map("uploaded_by_id") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  request    OvertimeRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  uploadedBy User?           @relation("OvertimeAttachmentUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  @@index([requestId])
+  @@map("overtime_attachments")
 }

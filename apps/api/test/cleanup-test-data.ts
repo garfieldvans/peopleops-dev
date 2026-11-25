@@ -34,6 +34,14 @@ async function main(): Promise<void> {
     await prisma.leavePolicy.deleteMany({ where: { code: { startsWith: "E2E-" } } });
     await prisma.leaveType.deleteMany({ where: { code: { startsWith: "E2E_" } } });
 
+    // Overtime rows also use Restrict on employees.
+    await prisma.overtimeApproval.deleteMany({});
+    await prisma.overtimeCorrection.deleteMany({});
+    await prisma.overtimeAttachment.deleteMany({});
+    await prisma.overtimeRequest.deleteMany({});
+    await prisma.overtimePolicyAssignment.deleteMany({});
+    await prisma.overtimePolicy.deleteMany({ where: { code: { startsWith: "E2E-" } } });
+
     await prisma.employee.deleteMany({
       where: { employeeNumber: { startsWith: "E2E-" } },
     });

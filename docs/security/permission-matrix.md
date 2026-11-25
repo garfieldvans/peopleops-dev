@@ -95,7 +95,7 @@ their own record. Downloads are authorized per request — there is no public or
 - Approval requires `leave_request.approve`/`reject`, the request to be inside the reviewer's scope,
   and the current approval stage to match the reviewer's role (manager vs HR). Self-approval is
   rejected.
-- `leave_request.override` allows HR to bypass the normal manager stage with an audit record.
+- `leave_request.override` allows HR to bypass the normal manager stage and finalise the request immediately with an audit record.
 - Managers and HR also receive self-service leave permissions for their own requests.
 
 ## Attendance scope

@@ -118,7 +118,9 @@ Statuses: `DRAFT → PENDING → APPROVED | REJECTED`, plus `WITHDRAWN` (pending
 - Submit validates duration, balance, attachments, overlap, and approval routing.
 - Approval modes are `MANAGER`, `HR`, and `MANAGER_AND_HR`. Manager approval moves a
   `MANAGER_AND_HR` request to the HR stage; HR then finalises it.
-- HR may override with `leave_request.override` and a reason. Self-approval is always rejected.
+- HR may override with `leave_request.override` and a reason. An override finalises the
+  request immediately, even when the normal route still has an HR stage. Self-approval is always
+  rejected.
 - Concurrent reviews are claimed with a conditional `UPDATE`; the loser receives
   `LEAVE_REQUEST_ALREADY_REVIEWED`.
 - Every decision is stored as a separate `LeaveRequestApproval` row with stage, decision, actor,
@@ -248,7 +250,10 @@ metadata. Attachment bytes and unnecessary personal data are not logged.
 - The leave year is a fixed calendar window; it does not support anniversary-based periods.
 - Expiration only processes credits with an explicit `expiresAt`; base entitlement credits have no
   expiry unless created as carry-over.
+- Approved half-day leave is exposed to attendance, but the remaining working half is not yet
+  recalculated against late, early-leave, or absence rules. Decide the product behaviour before
+  attendance feeds payroll.
 - The worker is a single scheduled process; it is safe to run multiple instances thanks to unique
   source keys, but no distributed lock is used.
-- Timezone is fixed to `Asia/Jakarta` in the worker schedule; the API uses the company timezone for
-  leave dates and calculations.
+- The worker reads the company timezone from the database and schedules leave/overtime jobs in it;
+  the API uses the same timezone for leave dates, cancellation cutoffs, and balance defaults.

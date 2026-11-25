@@ -29,6 +29,23 @@ export default defineConfig(({ mode }) => {
     optimizeDeps: {
       exclude: ["@peopleops/shared-types", "@peopleops/validators"],
     },
+    build: {
+      rolldownOptions: {
+        output: {
+          codeSplitting: {
+            groups: [
+              {
+                name: "react",
+                test: /node_modules\/(react|react-dom|react-router|react-router-dom|scheduler)\//,
+              },
+              { name: "nemo", test: /node_modules\/@nemo-ui\// },
+              { name: "query", test: /node_modules\/@tanstack\// },
+              { name: "vendor", test: /node_modules/ },
+            ],
+          },
+        },
+      },
+    },
     server: {
       port: 5173,
       proxy: {

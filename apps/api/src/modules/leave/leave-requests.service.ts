@@ -7,6 +7,7 @@ import {
 } from "@nestjs/common";
 import { Prisma } from "@peopleops/database";
 import {
+  addDays,
   calculatePeriodTotals,
   createCredit,
   createDebit,
@@ -16,6 +17,7 @@ import { PERMISSIONS } from "@peopleops/shared-types";
 import type { LeaveDashboard, LeaveRequest, PaginatedResponse } from "@peopleops/shared-types";
 import { toPageMeta } from "../../common/dto/page-query.dto";
 import { PrismaService } from "../../prisma/prisma.service";
+import { AttendanceService } from "../attendance/attendance.service";
 import { AuditService } from "../audit/audit.service";
 import { EmployeesService } from "../employee/employees.service";
 import type { AuthenticatedUser } from "../../common/types/authenticated-user";
@@ -57,6 +59,7 @@ export class LeaveRequestsService {
     private readonly employees: EmployeesService,
     private readonly entitlement: LeaveEntitlementService,
     private readonly duration: LeaveDurationService,
+    private readonly attendance: AttendanceService,
   ) {}
 
   async preview(dto: LeavePreviewDto, user: AuthenticatedUser) {
@@ -446,7 +449,7 @@ export class LeaveRequestsService {
     user: AuthenticatedUser,
   ): Promise<LeaveRequest> {
     const row = await this.findRow(id);
-    await this.assertCanReview(row, user, dto.override ?? false);
+    await this.assertCanReview(row, user, dto.override ?? false, "APPROVE");
     if (row.status !== "PENDING" || !row.approvalStage) {
       throw new ConflictException({
         code: "LEAVE_REQUEST_NOT_PENDING",
@@ -479,7 +482,7 @@ export class LeaveRequestsService {
         },
       });
 
-      if (stage === "MANAGER" && mode === "MANAGER_AND_HR") {
+      if (stage === "MANAGER" && mode === "MANAGER_AND_HR" && !(dto.override ?? false)) {
         await tx.leaveRequest.update({
           where: { id },
           data: {
@@ -513,7 +516,7 @@ export class LeaveRequestsService {
     user: AuthenticatedUser,
   ): Promise<LeaveRequest> {
     const row = await this.findRow(id);
-    await this.assertCanReview(row, user, dto.override ?? false);
+    await this.assertCanReview(row, user, dto.override ?? false, "REJECT");
     if (row.status !== "PENDING" || !row.approvalStage) {
       throw new ConflictException({
         code: "LEAVE_REQUEST_NOT_PENDING",
@@ -624,6 +627,7 @@ export class LeaveRequestsService {
         message: "You cannot cancel this leave request",
       });
     }
+    const today = todayKey(await this.attendance.getCompanyTimezone());
     if (row.status !== "APPROVED") {
       throw new ConflictException({
         code: "LEAVE_REQUEST_NOT_APPROVED",
@@ -632,9 +636,9 @@ export class LeaveRequestsService {
     }
     if (!isHr) {
       const cutoff = row.entitlementPeriod.policy.cancellationCutoffDays;
-      const start = row.startDate.getTime();
-      const latest = start - cutoff * 86_400_000;
-      if (Date.now() > latest) {
+      const startKey = row.startDate.toISOString().slice(0, 10);
+      const latest = addDays(startKey, -cutoff);
+      if (today > latest) {
         throw new BadRequestException({
           code: "LEAVE_CANCELLATION_CUTOFF",
           message: `Cancellation must be requested at least ${cutoff} day(s) before the leave starts`,
@@ -642,6 +646,7 @@ export class LeaveRequestsService {
       }
     }
 
+    const transactionDate = today;
     const rowAfter = await this.prisma.$transaction(async (tx) => {
       if (row.leaveType.requiresBalance) {
         await createCredit(tx, {
@@ -650,7 +655,7 @@ export class LeaveRequestsService {
           entitlementPeriodId: row.entitlementPeriodId,
           type: "LEAVE_REVERSAL",
           amount: Number(row.duration),
-          transactionDate: todayKey(),
+          transactionDate,
           sourceType: "LEAVE_REVERSAL",
           sourceRef: `request:${row.id}:reversal`,
           description: `Cancellation: ${dto.reason.trim()}`,
@@ -696,7 +701,7 @@ export class LeaveRequestsService {
         message: "No employee record is linked to your account",
       });
     }
-    const today = todayKey();
+    const today = todayKey(await this.attendance.getCompanyTimezone());
     const monthStart = `${today.slice(0, 7)}-01`;
     const monthEnd = new Date(Date.UTC(Number(today.slice(0, 4)), Number(today.slice(5, 7)), 0))
       .toISOString()
@@ -792,12 +797,15 @@ export class LeaveRequestsService {
     row: LeaveRequestRow,
     user: AuthenticatedUser,
     override: boolean,
+    action: "APPROVE" | "REJECT",
   ): Promise<void> {
     const permissions = new Set(user.permissions);
-    if (!permissions.has(PERMISSIONS.LEAVE_REQUEST_APPROVE)) {
+    const requiredPermission =
+      action === "APPROVE" ? PERMISSIONS.LEAVE_REQUEST_APPROVE : PERMISSIONS.LEAVE_REQUEST_REJECT;
+    if (!permissions.has(requiredPermission)) {
       throw new ForbiddenException({
-        code: "LEAVE_APPROVE_FORBIDDEN",
-        message: "You do not have permission to approve leave requests",
+        code: action === "APPROVE" ? "LEAVE_APPROVE_FORBIDDEN" : "LEAVE_REJECT_FORBIDDEN",
+        message: `You do not have permission to ${action.toLowerCase()} leave requests`,
       });
     }
     const reviewer = await this.prisma.employee.findUnique({

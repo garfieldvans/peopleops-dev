@@ -442,6 +442,81 @@ export const PERMISSION_DEFINITIONS: readonly PermissionDefinition[] = [
     name: "Read leave reports",
     description: "View and export leave reports",
   },
+  {
+    code: PERMISSIONS.OVERTIME_READ_SELF,
+    name: "Read own overtime",
+    description: "View the signed-in employee's overtime requests",
+  },
+  {
+    code: PERMISSIONS.OVERTIME_CREATE,
+    name: "Create overtime requests",
+    description: "Create overtime requests for the signed-in employee",
+  },
+  {
+    code: PERMISSIONS.OVERTIME_UPDATE_SELF,
+    name: "Update own overtime",
+    description: "Edit the signed-in employee's draft overtime requests",
+  },
+  {
+    code: PERMISSIONS.OVERTIME_WITHDRAW_SELF,
+    name: "Withdraw own overtime",
+    description: "Withdraw the signed-in employee's pending overtime requests",
+  },
+  {
+    code: PERMISSIONS.OVERTIME_READ_TEAM,
+    name: "Read team overtime",
+    description: "View overtime requests inside the reporting subtree",
+  },
+  {
+    code: PERMISSIONS.OVERTIME_APPROVE,
+    name: "Approve overtime",
+    description: "Approve an overtime request at the current stage",
+  },
+  {
+    code: PERMISSIONS.OVERTIME_REJECT,
+    name: "Reject overtime",
+    description: "Reject an overtime request with a reason",
+  },
+  {
+    code: PERMISSIONS.OVERTIME_READ_ALL,
+    name: "Read all overtime",
+    description: "View every overtime request in the organization",
+  },
+  {
+    code: PERMISSIONS.OVERTIME_MANAGE,
+    name: "Manage overtime",
+    description: "Override approvals, cancel requests, and administer overtime",
+  },
+  {
+    code: PERMISSIONS.OVERTIME_VERIFY,
+    name: "Verify overtime",
+    description: "Verify actual overtime and make it payroll-eligible",
+  },
+  {
+    code: PERMISSIONS.OVERTIME_CORRECT,
+    name: "Correct verified overtime",
+    description: "Correct a verified overtime duration with an audit trail",
+  },
+  {
+    code: PERMISSIONS.OVERTIME_EXPORT,
+    name: "Export overtime",
+    description: "Export overtime records and summaries as CSV",
+  },
+  {
+    code: PERMISSIONS.OVERTIME_POLICY_READ,
+    name: "Read overtime policies",
+    description: "View overtime policies and assignments",
+  },
+  {
+    code: PERMISSIONS.OVERTIME_POLICY_MANAGE,
+    name: "Manage overtime policies",
+    description: "Create, update, and deactivate overtime policies",
+  },
+  {
+    code: PERMISSIONS.OVERTIME_ASSIGNMENT_MANAGE,
+    name: "Manage overtime assignments",
+    description: "Assign overtime policies to employees, departments, or branches",
+  },
 ];
 
 const ALL_PERMISSIONS = PERMISSION_DEFINITIONS.map((permission) => permission.code);
@@ -535,6 +610,34 @@ const LEAVE_TEAM = [
   PERMISSIONS.LEAVE_TRANSACTION_READ,
 ] as const;
 
+const OVERTIME_SELF = [
+  PERMISSIONS.OVERTIME_READ_SELF,
+  PERMISSIONS.OVERTIME_CREATE,
+  PERMISSIONS.OVERTIME_UPDATE_SELF,
+  PERMISSIONS.OVERTIME_WITHDRAW_SELF,
+] as const;
+
+const OVERTIME_TEAM = [
+  PERMISSIONS.OVERTIME_READ_SELF,
+  PERMISSIONS.OVERTIME_READ_TEAM,
+  PERMISSIONS.OVERTIME_APPROVE,
+  PERMISSIONS.OVERTIME_REJECT,
+] as const;
+
+const OVERTIME_ADMIN = [
+  PERMISSIONS.OVERTIME_READ_SELF,
+  PERMISSIONS.OVERTIME_READ_ALL,
+  PERMISSIONS.OVERTIME_MANAGE,
+  PERMISSIONS.OVERTIME_VERIFY,
+  PERMISSIONS.OVERTIME_CORRECT,
+  PERMISSIONS.OVERTIME_EXPORT,
+  PERMISSIONS.OVERTIME_APPROVE,
+  PERMISSIONS.OVERTIME_REJECT,
+  PERMISSIONS.OVERTIME_POLICY_READ,
+  PERMISSIONS.OVERTIME_POLICY_MANAGE,
+  PERMISSIONS.OVERTIME_ASSIGNMENT_MANAGE,
+] as const;
+
 export interface RoleDefinition {
   code: RoleCode;
   name: string;
@@ -560,6 +663,8 @@ export const ROLE_DEFINITIONS: readonly RoleDefinition[] = [
       ...SELF_SERVICE,
       ...LEAVE_SELF,
       ...LEAVE_ADMIN,
+      ...OVERTIME_SELF,
+      ...OVERTIME_ADMIN,
       PERMISSIONS.USER_READ,
       PERMISSIONS.USER_CREATE,
       PERMISSIONS.USER_UPDATE,
@@ -602,6 +707,9 @@ export const ROLE_DEFINITIONS: readonly RoleDefinition[] = [
       ...SELF_SERVICE,
       ...LEAVE_SELF,
       ...LEAVE_TEAM,
+      ...OVERTIME_SELF,
+      ...OVERTIME_TEAM,
+      PERMISSIONS.OVERTIME_POLICY_READ,
       ...ORGANIZATION_READ,
       PERMISSIONS.EMPLOYEE_READ_TEAM,
       PERMISSIONS.WORK_SCHEDULE_READ,
@@ -621,6 +729,10 @@ export const ROLE_DEFINITIONS: readonly RoleDefinition[] = [
     permissions: [
       ...SELF_SERVICE,
       ...LEAVE_SELF,
+      ...OVERTIME_SELF,
+      PERMISSIONS.OVERTIME_READ_ALL,
+      PERMISSIONS.OVERTIME_EXPORT,
+      PERMISSIONS.OVERTIME_POLICY_READ,
       ...ORGANIZATION_READ,
       PERMISSIONS.HOLIDAY_READ,
       PERMISSIONS.ATTENDANCE_READ,
@@ -636,6 +748,7 @@ export const ROLE_DEFINITIONS: readonly RoleDefinition[] = [
     permissions: [
       ...SELF_SERVICE,
       ...LEAVE_SELF,
+      ...OVERTIME_SELF,
       PERMISSIONS.WORK_SCHEDULE_READ,
       PERMISSIONS.SHIFT_READ,
       PERMISSIONS.HOLIDAY_READ,

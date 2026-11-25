@@ -1,6 +1,7 @@
 import type { Prisma } from "@peopleops/database";
 
 export const userWithRolesInclude = {
+  employee: { select: { id: true } },
   roles: {
     include: {
       role: {

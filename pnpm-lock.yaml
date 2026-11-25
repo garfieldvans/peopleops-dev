@@ -226,6 +226,9 @@ importers:
       '@peopleops/validators':
         specifier: workspace:*
         version: link:../../packages/validators
+      cron:
+        specifier: ^4.4.0
+        version: 4.4.0
       dotenv:
         specifier: ^17.2.3
         version: 17.4.2

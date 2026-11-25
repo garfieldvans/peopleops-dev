@@ -1,4 +1,5 @@
-import { Badge, Button, Divider, Stack, Typography, useTheme } from "@nemo-ui/ui";
+import { Badge, Button, Divider, Spinner, Stack, Typography, useTheme } from "@nemo-ui/ui";
+import { Suspense } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { PERMISSIONS } from "@peopleops/shared-types";
 import { useAuth } from "../features/auth/auth-context";
@@ -43,11 +44,7 @@ const NAV_ITEMS: NavItem[] = [
   {
     to: "/leave",
     label: "Leave",
-    anyPermission: [
-      PERMISSIONS.LEAVE_REQUEST_READ,
-      PERMISSIONS.LEAVE_REQUEST_READ_TEAM,
-      PERMISSIONS.LEAVE_REQUEST_READ_ALL,
-    ],
+    permission: PERMISSIONS.LEAVE_REQUEST_READ,
   },
   { to: "/leave/requests", label: "My leave", permission: PERMISSIONS.LEAVE_REQUEST_READ },
   { to: "/leave/balances", label: "My leave balance", permission: PERMISSIONS.LEAVE_BALANCE_READ },
@@ -80,6 +77,46 @@ const NAV_ITEMS: NavItem[] = [
     permission: PERMISSIONS.LEAVE_TRANSACTION_READ,
   },
   { to: "/leave/reports", label: "Leave reports", permission: PERMISSIONS.LEAVE_REPORT_READ },
+  {
+    to: "/overtime",
+    label: "Overtime",
+    permission: PERMISSIONS.OVERTIME_READ_SELF,
+  },
+  {
+    to: "/overtime/requests",
+    label: "My overtime",
+    permission: PERMISSIONS.OVERTIME_READ_SELF,
+  },
+  {
+    to: "/overtime/team",
+    label: "Team overtime",
+    anyPermission: [PERMISSIONS.OVERTIME_READ_TEAM, PERMISSIONS.OVERTIME_READ_ALL],
+  },
+  {
+    to: "/overtime/approvals",
+    label: "Overtime approvals",
+    permission: PERMISSIONS.OVERTIME_APPROVE,
+  },
+  {
+    to: "/overtime/verification",
+    label: "Overtime verification",
+    permission: PERMISSIONS.OVERTIME_VERIFY,
+  },
+  {
+    to: "/overtime/policies",
+    label: "Overtime policies",
+    permission: PERMISSIONS.OVERTIME_POLICY_READ,
+  },
+  {
+    to: "/overtime/assignments",
+    label: "Overtime assignments",
+    permission: PERMISSIONS.OVERTIME_POLICY_READ,
+  },
+  {
+    to: "/overtime/reports",
+    label: "Overtime reports",
+    anyPermission: [PERMISSIONS.OVERTIME_READ_TEAM, PERMISSIONS.OVERTIME_READ_ALL],
+  },
   { to: "/employees/me", label: "My profile", permission: PERMISSIONS.EMPLOYEE_READ_SELF },
   {
     to: "/employees",
@@ -142,7 +179,7 @@ export function AppShell() {
             <NavLink
               key={item.to}
               to={item.to}
-              end={item.to === "/" || item.to === "/leave"}
+              end={item.to === "/" || item.to === "/leave" || item.to === "/overtime"}
               className={navClassName}
             >
               {item.label}
@@ -191,7 +228,18 @@ export function AppShell() {
         </header>
 
         <main className="min-w-0 flex-1 px-5 py-6">
-          <Outlet />
+          <Suspense
+            fallback={
+              <Stack direction="row" spacing={12} align="center">
+                <Spinner />
+                <Typography variant="bodySmall" color="neutral">
+                  Loading page…
+                </Typography>
+              </Stack>
+            }
+          >
+            <Outlet />
+          </Suspense>
         </main>
       </div>
     </div>

@@ -46,7 +46,9 @@ async function bootstrap(): Promise<void> {
   }
 
   await app.init();
-  logger.log("Worker started. Leave jobs run daily at 01:00 Asia/Jakarta.");
+  logger.log(
+    "Worker started. Leave jobs run daily at 01:00 and overtime housekeeping at 02:00 in the company timezone.",
+  );
 }
 
 bootstrap().catch((error: unknown) => {

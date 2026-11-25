@@ -35,7 +35,7 @@ export function LeaveRequestDetailPage() {
   const navigate = useNavigate();
   const toast = useToast();
   const queryClient = useQueryClient();
-  const { hasPermission } = useAuth();
+  const { hasPermission, user } = useAuth();
   const [action, setAction] = useState<ActionKind | null>(null);
   const [comment, setComment] = useState("");
   const [override, setOverride] = useState(false);
@@ -148,15 +148,21 @@ export function LeaveRequestDetailPage() {
   }
 
   const request = requestQuery.data;
+  const isOwner = user?.employeeId === request.employeeId;
   const canReview =
     request.status === "PENDING" && hasPermission(PERMISSIONS.LEAVE_REQUEST_APPROVE);
   const canReject = request.status === "PENDING" && hasPermission(PERMISSIONS.LEAVE_REQUEST_REJECT);
   const canWithdraw =
-    request.status === "PENDING" && hasPermission(PERMISSIONS.LEAVE_REQUEST_WITHDRAW);
+    request.status === "PENDING" &&
+    isOwner &&
+    hasPermission(PERMISSIONS.LEAVE_REQUEST_WITHDRAW);
   const canCancel =
-    request.status === "APPROVED" && hasPermission(PERMISSIONS.LEAVE_REQUEST_CANCEL);
+    request.status === "APPROVED" &&
+    (isOwner || hasPermission(PERMISSIONS.LEAVE_REQUEST_READ_ALL)) &&
+    hasPermission(PERMISSIONS.LEAVE_REQUEST_CANCEL);
   const canEditAttachments =
     (request.status === "DRAFT" || request.status === "PENDING") &&
+    isOwner &&
     hasPermission(PERMISSIONS.LEAVE_REQUEST_CREATE);
 
   return (
@@ -169,7 +175,9 @@ export function LeaveRequestDetailPage() {
             <Button variant="outlined" onClick={() => navigate("/leave/requests")}>
               Back
             </Button>
-            {request.status === "DRAFT" && hasPermission(PERMISSIONS.LEAVE_REQUEST_SUBMIT) ? (
+            {request.status === "DRAFT" &&
+            isOwner &&
+            hasPermission(PERMISSIONS.LEAVE_REQUEST_SUBMIT) ? (
               <LoadingButton
                 loading={submitMutation.isPending}
                 onClick={() => submitMutation.mutate()}

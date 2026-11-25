@@ -19,6 +19,7 @@ import type { Request, Response } from "express";
 import { PERMISSIONS } from "@peopleops/shared-types";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { RequirePermissions } from "../../common/decorators/require-permissions.decorator";
+import { attachmentDisposition } from "../../common/http/content-disposition";
 import { requestMeta } from "../../common/http/request-meta";
 import type { AuthenticatedUser } from "../../common/types/authenticated-user";
 import {
@@ -184,10 +185,9 @@ export class LeaveRequestsController {
   ) {
     const file = await this.attachments.download(id, attachmentId, user);
     res.setHeader("Content-Type", file.mimeType);
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename="${file.fileName.replace(/"/g, "")}"`,
-    );
+    res.setHeader("Content-Disposition", attachmentDisposition(file.fileName));
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("Cache-Control", "private, no-store");
     res.send(file.content);
   }
 

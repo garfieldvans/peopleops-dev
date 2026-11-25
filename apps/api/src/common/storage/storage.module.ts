@@ -4,6 +4,7 @@ import { FILE_STORAGE } from "./file-storage";
 import { LocalFileStorage } from "./local-file-storage";
 
 export const LEAVE_FILE_STORAGE = Symbol("LEAVE_FILE_STORAGE");
+export const OVERTIME_FILE_STORAGE = Symbol("OVERTIME_FILE_STORAGE");
 
 @Module({
   providers: [
@@ -22,7 +23,15 @@ export const LEAVE_FILE_STORAGE = Symbol("LEAVE_FILE_STORAGE");
             resolve(process.cwd(), "storage", "leave-attachments"),
         ),
     },
+    {
+      provide: OVERTIME_FILE_STORAGE,
+      useFactory: () =>
+        new LocalFileStorage(
+          process.env["OVERTIME_FILE_STORAGE_ROOT"] ??
+            resolve(process.cwd(), "storage", "overtime-attachments"),
+        ),
+    },
   ],
-  exports: [FILE_STORAGE, LEAVE_FILE_STORAGE],
+  exports: [FILE_STORAGE, LEAVE_FILE_STORAGE, OVERTIME_FILE_STORAGE],
 })
 export class StorageModule {}

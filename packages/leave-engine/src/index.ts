@@ -80,8 +80,17 @@ export function leavePeriodForDate(dateKey: string, startMonth: number): PeriodW
   return { start, end: addDays(addMonths(start, 12), -1) };
 }
 
-export function todayKey(): string {
-  return dateKeyOf(new Date());
+export function todayKey(timeZone = "UTC"): string {
+  if (timeZone === "UTC") return dateKeyOf(new Date());
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((entry) => entry.type === type)?.value ?? "";
+  return `${part("year")}-${part("month")}-${part("day")}`;
 }
 
 export function policySnapshot(policy: {

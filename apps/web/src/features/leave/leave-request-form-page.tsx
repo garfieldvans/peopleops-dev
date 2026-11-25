@@ -12,7 +12,7 @@ import {
   useToast,
 } from "@nemo-ui/ui";
 import { useEffect, useMemo, useState } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 import type { LeaveRequest, LeaveRequestPreview } from "@peopleops/shared-types";
@@ -220,13 +220,21 @@ export function LeaveRequestFormPage() {
                     fullWidth
                   />
                 ) : null}
-                <Textarea
-                  label="Reason"
-                  rows={4}
-                  placeholder="Explain the reason for this leave"
-                  {...form.register("reason")}
-                  error={form.formState.errors.reason?.message}
-                  fullWidth
+                <Controller
+                  control={form.control}
+                  name="reason"
+                  render={({ field, fieldState }) => (
+                    <Textarea
+                      label="Reason"
+                      rows={4}
+                      placeholder="Explain the reason for this leave"
+                      value={field.value ?? ""}
+                      onChange={(event) => field.onChange(event.target.value)}
+                      onBlur={field.onBlur}
+                      error={fieldState.error?.message}
+                      fullWidth
+                    />
+                  )}
                 />
                 {selectedType?.requiresAttachment ? (
                   <Alert tone="warning" title="Supporting document required">
