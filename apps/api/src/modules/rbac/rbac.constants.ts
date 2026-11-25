@@ -1,4 +1,9 @@
-import { PERMISSIONS, ROLE_CODES, type PermissionCode, type RoleCode } from "@peopleops/shared-types";
+import {
+  PERMISSIONS,
+  ROLE_CODES,
+  type PermissionCode,
+  type RoleCode,
+} from "@peopleops/shared-types";
 
 export interface PermissionDefinition {
   code: PermissionCode;
@@ -312,6 +317,131 @@ export const PERMISSION_DEFINITIONS: readonly PermissionDefinition[] = [
     name: "Deactivate holidays",
     description: "Deactivate holidays that no longer apply",
   },
+  {
+    code: PERMISSIONS.LEAVE_TYPE_READ,
+    name: "Read leave types",
+    description: "View configurable leave types",
+  },
+  {
+    code: PERMISSIONS.LEAVE_TYPE_CREATE,
+    name: "Create leave types",
+    description: "Add configurable leave types",
+  },
+  {
+    code: PERMISSIONS.LEAVE_TYPE_UPDATE,
+    name: "Update leave types",
+    description: "Edit leave types and their configuration",
+  },
+  {
+    code: PERMISSIONS.LEAVE_TYPE_DEACTIVATE,
+    name: "Deactivate leave types",
+    description: "Deactivate leave types that are no longer used",
+  },
+  {
+    code: PERMISSIONS.LEAVE_POLICY_READ,
+    name: "Read leave policies",
+    description: "View leave policies and their accrual rules",
+  },
+  {
+    code: PERMISSIONS.LEAVE_POLICY_CREATE,
+    name: "Create leave policies",
+    description: "Add leave policies",
+  },
+  {
+    code: PERMISSIONS.LEAVE_POLICY_UPDATE,
+    name: "Update leave policies",
+    description: "Edit leave policies and effective dates",
+  },
+  {
+    code: PERMISSIONS.LEAVE_POLICY_DEACTIVATE,
+    name: "Deactivate leave policies",
+    description: "Deactivate leave policies",
+  },
+  {
+    code: PERMISSIONS.LEAVE_POLICY_ASSIGN,
+    name: "Assign leave policies",
+    description: "Assign leave policies to employees",
+  },
+  {
+    code: PERMISSIONS.LEAVE_REQUEST_READ,
+    name: "Read own leave requests",
+    description: "View leave requests belonging to the signed-in employee",
+  },
+  {
+    code: PERMISSIONS.LEAVE_REQUEST_READ_ALL,
+    name: "Read all leave requests",
+    description: "View leave requests across the organisation",
+  },
+  {
+    code: PERMISSIONS.LEAVE_REQUEST_READ_TEAM,
+    name: "Read team leave requests",
+    description: "View leave requests inside the manager's reporting line",
+  },
+  {
+    code: PERMISSIONS.LEAVE_REQUEST_CREATE,
+    name: "Create leave requests",
+    description: "Create draft leave requests for the signed-in employee",
+  },
+  {
+    code: PERMISSIONS.LEAVE_REQUEST_SUBMIT,
+    name: "Submit leave requests",
+    description: "Submit the signed-in employee's draft leave requests",
+  },
+  {
+    code: PERMISSIONS.LEAVE_REQUEST_WITHDRAW,
+    name: "Withdraw leave requests",
+    description: "Withdraw pending leave requests",
+  },
+  {
+    code: PERMISSIONS.LEAVE_REQUEST_APPROVE,
+    name: "Approve leave requests",
+    description: "Approve leave requests within scope",
+  },
+  {
+    code: PERMISSIONS.LEAVE_REQUEST_REJECT,
+    name: "Reject leave requests",
+    description: "Reject leave requests within scope",
+  },
+  {
+    code: PERMISSIONS.LEAVE_REQUEST_CANCEL,
+    name: "Cancel leave requests",
+    description: "Cancel approved leave requests",
+  },
+  {
+    code: PERMISSIONS.LEAVE_REQUEST_OVERRIDE,
+    name: "Override leave approval",
+    description: "Override a pending approval stage and record the override",
+  },
+  {
+    code: PERMISSIONS.LEAVE_BALANCE_READ,
+    name: "Read own leave balance",
+    description: "View the signed-in employee's leave balances",
+  },
+  {
+    code: PERMISSIONS.LEAVE_BALANCE_READ_ALL,
+    name: "Read all leave balances",
+    description: "View leave balances for every employee",
+  },
+  {
+    code: PERMISSIONS.LEAVE_BALANCE_ADJUST,
+    name: "Adjust leave balances",
+    description: "Create manual leave balance adjustments",
+  },
+  {
+    code: PERMISSIONS.LEAVE_TRANSACTION_READ,
+    name: "Read own leave ledger",
+    description: "View the signed-in employee's leave transactions",
+  },
+  {
+    code: PERMISSIONS.LEAVE_TRANSACTION_READ_ALL,
+    name: "Read all leave ledger",
+    description: "View leave transactions for every employee",
+  },
+  {
+    code: PERMISSIONS.LEAVE_REPORT_READ,
+    name: "Read leave reports",
+    description: "View and export leave reports",
+  },
 ];
 
 const ALL_PERMISSIONS = PERMISSION_DEFINITIONS.map((permission) => permission.code);
@@ -362,6 +492,49 @@ const SELF_SERVICE = [
   PERMISSIONS.EMPLOYEE_UPDATE_SELF,
 ] as const;
 
+const LEAVE_SELF = [
+  PERMISSIONS.LEAVE_REQUEST_READ,
+  PERMISSIONS.LEAVE_REQUEST_CREATE,
+  PERMISSIONS.LEAVE_REQUEST_SUBMIT,
+  PERMISSIONS.LEAVE_REQUEST_WITHDRAW,
+  PERMISSIONS.LEAVE_REQUEST_CANCEL,
+  PERMISSIONS.LEAVE_BALANCE_READ,
+  PERMISSIONS.LEAVE_TRANSACTION_READ,
+] as const;
+
+const LEAVE_ADMIN = [
+  PERMISSIONS.LEAVE_TYPE_READ,
+  PERMISSIONS.LEAVE_TYPE_CREATE,
+  PERMISSIONS.LEAVE_TYPE_UPDATE,
+  PERMISSIONS.LEAVE_TYPE_DEACTIVATE,
+  PERMISSIONS.LEAVE_POLICY_READ,
+  PERMISSIONS.LEAVE_POLICY_CREATE,
+  PERMISSIONS.LEAVE_POLICY_UPDATE,
+  PERMISSIONS.LEAVE_POLICY_DEACTIVATE,
+  PERMISSIONS.LEAVE_POLICY_ASSIGN,
+  PERMISSIONS.LEAVE_REQUEST_READ,
+  PERMISSIONS.LEAVE_REQUEST_READ_ALL,
+  PERMISSIONS.LEAVE_REQUEST_APPROVE,
+  PERMISSIONS.LEAVE_REQUEST_REJECT,
+  PERMISSIONS.LEAVE_REQUEST_CANCEL,
+  PERMISSIONS.LEAVE_REQUEST_OVERRIDE,
+  PERMISSIONS.LEAVE_BALANCE_READ,
+  PERMISSIONS.LEAVE_BALANCE_READ_ALL,
+  PERMISSIONS.LEAVE_BALANCE_ADJUST,
+  PERMISSIONS.LEAVE_TRANSACTION_READ,
+  PERMISSIONS.LEAVE_TRANSACTION_READ_ALL,
+  PERMISSIONS.LEAVE_REPORT_READ,
+] as const;
+
+const LEAVE_TEAM = [
+  PERMISSIONS.LEAVE_REQUEST_READ,
+  PERMISSIONS.LEAVE_REQUEST_READ_TEAM,
+  PERMISSIONS.LEAVE_REQUEST_APPROVE,
+  PERMISSIONS.LEAVE_REQUEST_REJECT,
+  PERMISSIONS.LEAVE_BALANCE_READ,
+  PERMISSIONS.LEAVE_TRANSACTION_READ,
+] as const;
+
 export interface RoleDefinition {
   code: RoleCode;
   name: string;
@@ -385,6 +558,8 @@ export const ROLE_DEFINITIONS: readonly RoleDefinition[] = [
     isSystem: false,
     permissions: [
       ...SELF_SERVICE,
+      ...LEAVE_SELF,
+      ...LEAVE_ADMIN,
       PERMISSIONS.USER_READ,
       PERMISSIONS.USER_CREATE,
       PERMISSIONS.USER_UPDATE,
@@ -425,6 +600,8 @@ export const ROLE_DEFINITIONS: readonly RoleDefinition[] = [
     isSystem: false,
     permissions: [
       ...SELF_SERVICE,
+      ...LEAVE_SELF,
+      ...LEAVE_TEAM,
       ...ORGANIZATION_READ,
       PERMISSIONS.EMPLOYEE_READ_TEAM,
       PERMISSIONS.WORK_SCHEDULE_READ,
@@ -443,6 +620,7 @@ export const ROLE_DEFINITIONS: readonly RoleDefinition[] = [
     isSystem: false,
     permissions: [
       ...SELF_SERVICE,
+      ...LEAVE_SELF,
       ...ORGANIZATION_READ,
       PERMISSIONS.HOLIDAY_READ,
       PERMISSIONS.ATTENDANCE_READ,
@@ -457,9 +635,11 @@ export const ROLE_DEFINITIONS: readonly RoleDefinition[] = [
     isSystem: false,
     permissions: [
       ...SELF_SERVICE,
+      ...LEAVE_SELF,
       PERMISSIONS.WORK_SCHEDULE_READ,
       PERMISSIONS.SHIFT_READ,
       PERMISSIONS.HOLIDAY_READ,
+      PERMISSIONS.LEAVE_TYPE_READ,
       ...ATTENDANCE_SELF,
     ],
   },

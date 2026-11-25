@@ -44,6 +44,7 @@ function stateLabel(state: AttendanceDashboard["state"]): string {
     CLOCKED_OUT: "Clocked out",
     DAY_OFF: "Day off",
     HOLIDAY: "Holiday",
+    ON_LEAVE: "On leave",
     NO_EMPLOYEE: "No employee profile",
   };
   return labels[state];
@@ -54,7 +55,7 @@ function stateColor(
 ): "success" | "warning" | "error" | "neutral" | "primary" {
   if (state === "WORKING") return "success";
   if (state === "ON_BREAK" || state === "NOT_CLOCKED_IN") return "warning";
-  if (state === "HOLIDAY") return "primary";
+  if (state === "HOLIDAY" || state === "ON_LEAVE") return "primary";
   if (state === "CLOCKED_OUT") return "primary";
   return "neutral";
 }
@@ -97,8 +98,7 @@ export function DashboardPage() {
   });
 
   const self = selfQuery.data;
-  const unlinked =
-    selfQuery.error instanceof ApiRequestError && selfQuery.error.status === 404;
+  const unlinked = selfQuery.error instanceof ApiRequestError && selfQuery.error.status === 404;
   const overview = overviewQuery.data;
 
   return (
@@ -117,6 +117,7 @@ export function DashboardPage() {
           <Stat label="Scheduled today" value={overview.scheduledEmployees} />
           <Stat label="Present" value={overview.present} />
           <Stat label="Late" value={overview.late} />
+          <Stat label="On leave" value={overview.onLeave} />
           <Stat label="Incomplete" value={overview.incomplete} />
           <Stat label="Pending corrections" value={overview.pendingCorrections} />
         </div>
@@ -173,6 +174,14 @@ export function DashboardPage() {
                       {self.holiday ? (
                         <Typography variant="caption" color="neutral">
                           Holiday: {self.holiday.name}
+                        </Typography>
+                      ) : null}
+                      {self.leave ? (
+                        <Typography variant="caption" color="neutral">
+                          On leave: {self.leave.leaveType.name}
+                          {self.leave.requestMode === "HALF_DAY"
+                            ? ` (${self.leave.halfDayPeriod === "FIRST_HALF" ? "first half" : "second half"})`
+                            : ""}
                         </Typography>
                       ) : null}
                     </Stack>
@@ -311,6 +320,11 @@ export function DashboardPage() {
                   className="text-sm text-[var(--nemo-primary-700)] underline"
                 >
                   Holiday calendar
+                </Link>
+              ) : null}
+              {hasPermission(PERMISSIONS.LEAVE_REQUEST_READ) ? (
+                <Link to="/leave" className="text-sm text-[var(--nemo-primary-700)] underline">
+                  Leave management
                 </Link>
               ) : null}
             </Stack>

@@ -1,8 +1,11 @@
 import { Module } from "@nestjs/common";
+import { ScheduleModule } from "@nestjs/schedule";
+import { LeaveJobsService } from "./leave-jobs.service";
+import { PRISMA_CLIENT, prismaProvider } from "./prisma.provider";
 
-/**
- * Job modules are registered here as they are implemented. Phase 1 deliberately
- * contains no processors, queues or schedulers (ADR-013).
- */
-@Module({})
+@Module({
+  imports: [ScheduleModule.forRoot()],
+  providers: [prismaProvider, LeaveJobsService],
+  exports: [PRISMA_CLIENT],
+})
 export class WorkerModule {}

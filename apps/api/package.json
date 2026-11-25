@@ -45,6 +45,7 @@
     "@nestjs/swagger": "12.1.2",
     "@nestjs/throttler": "6.8.0",
     "@peopleops/database": "workspace:*",
+    "@peopleops/leave-engine": "workspace:*",
     "@peopleops/shared-types": "workspace:*",
     "@peopleops/validators": "workspace:*",
     "argon2": "0.45.2",

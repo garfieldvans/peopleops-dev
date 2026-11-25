@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { AuditModule } from "../audit/audit.module";
 import { EmployeeModule } from "../employee/employee.module";
+import { LeaveIntegrationModule } from "../leave/leave-integration.module";
 import { AttendanceController } from "./attendance.controller";
 import { AttendanceCorrectionsController } from "./attendance-corrections.controller";
 import { AttendanceCorrectionsService } from "./attendance-corrections.service";
@@ -15,7 +16,7 @@ import { WorkSchedulesController } from "./work-schedules.controller";
 import { WorkSchedulesService } from "./work-schedules.service";
 
 @Module({
-  imports: [AuditModule, EmployeeModule],
+  imports: [AuditModule, EmployeeModule, LeaveIntegrationModule],
   controllers: [
     WorkSchedulesController,
     ShiftsController,

@@ -20,6 +20,20 @@ import { EmployeeDetailPage } from "../features/employees/employee-detail-page";
 import { EmployeeFormPage } from "../features/employees/employee-form-page";
 import { EmployeesPage } from "../features/employees/employees-page";
 import { ForbiddenPage } from "../features/forbidden/forbidden-page";
+import { LeaveApprovalInboxPage } from "../features/leave/leave-approval-inbox-page";
+import { LeaveBalanceManagementPage } from "../features/leave/leave-balance-management-page";
+import { LeaveCalendarPage } from "../features/leave/leave-calendar-page";
+import { LeaveDashboardPage } from "../features/leave/leave-dashboard-page";
+import { LeavePoliciesPage } from "../features/leave/leave-policies-page";
+import { LeavePolicyAssignmentsPage } from "../features/leave/leave-policy-assignments-page";
+import { LeaveReportsPage } from "../features/leave/leave-reports-page";
+import { LeaveRequestDetailPage } from "../features/leave/leave-request-detail-page";
+import { LeaveRequestFormPage } from "../features/leave/leave-request-form-page";
+import { LeaveTransactionsPage } from "../features/leave/leave-transactions-page";
+import { LeaveTypesPage } from "../features/leave/leave-types-page";
+import { MyLeaveBalancePage } from "../features/leave/my-leave-balance-page";
+import { MyLeaveRequestsPage } from "../features/leave/my-leave-requests-page";
+import { TeamLeaveRequestsPage } from "../features/leave/team-leave-requests-page";
 import { BranchesPage } from "../features/organization/branches-page";
 import { CompanyPage } from "../features/organization/company-page";
 import { DepartmentsPage } from "../features/organization/departments-page";
@@ -103,10 +117,7 @@ export function App() {
               path="attendance"
               element={
                 <RequireAnyPermission
-                  permissions={[
-                    PERMISSIONS.ATTENDANCE_READ_ALL,
-                    PERMISSIONS.ATTENDANCE_READ_TEAM,
-                  ]}
+                  permissions={[PERMISSIONS.ATTENDANCE_READ_ALL, PERMISSIONS.ATTENDANCE_READ_TEAM]}
                 >
                   <AttendanceManagementPage />
                 </RequireAnyPermission>
@@ -213,6 +224,143 @@ export function App() {
               element={
                 <RequirePermission permission={PERMISSIONS.JOB_LEVEL_READ}>
                   <JobLevelsPage />
+                </RequirePermission>
+              }
+            />
+            <Route
+              path="leave"
+              element={
+                <RequireAnyPermission
+                  permissions={[
+                    PERMISSIONS.LEAVE_REQUEST_READ,
+                    PERMISSIONS.LEAVE_REQUEST_READ_TEAM,
+                    PERMISSIONS.LEAVE_REQUEST_READ_ALL,
+                  ]}
+                >
+                  <LeaveDashboardPage />
+                </RequireAnyPermission>
+              }
+            />
+            <Route
+              path="leave/balances"
+              element={
+                <RequirePermission permission={PERMISSIONS.LEAVE_BALANCE_READ}>
+                  <MyLeaveBalancePage />
+                </RequirePermission>
+              }
+            />
+            <Route
+              path="leave/requests"
+              element={
+                <RequirePermission permission={PERMISSIONS.LEAVE_REQUEST_READ}>
+                  <MyLeaveRequestsPage />
+                </RequirePermission>
+              }
+            />
+            <Route
+              path="leave/requests/new"
+              element={
+                <RequirePermission permission={PERMISSIONS.LEAVE_REQUEST_CREATE}>
+                  <LeaveRequestFormPage />
+                </RequirePermission>
+              }
+            />
+            <Route
+              path="leave/requests/:id"
+              element={
+                <RequireAnyPermission
+                  permissions={[
+                    PERMISSIONS.LEAVE_REQUEST_READ,
+                    PERMISSIONS.LEAVE_REQUEST_READ_TEAM,
+                    PERMISSIONS.LEAVE_REQUEST_READ_ALL,
+                  ]}
+                >
+                  <LeaveRequestDetailPage />
+                </RequireAnyPermission>
+              }
+            />
+            <Route
+              path="leave/team"
+              element={
+                <RequireAnyPermission
+                  permissions={[
+                    PERMISSIONS.LEAVE_REQUEST_READ_TEAM,
+                    PERMISSIONS.LEAVE_REQUEST_READ_ALL,
+                  ]}
+                >
+                  <TeamLeaveRequestsPage />
+                </RequireAnyPermission>
+              }
+            />
+            <Route
+              path="leave/approvals"
+              element={
+                <RequirePermission permission={PERMISSIONS.LEAVE_REQUEST_APPROVE}>
+                  <LeaveApprovalInboxPage />
+                </RequirePermission>
+              }
+            />
+            <Route
+              path="leave/calendar"
+              element={
+                <RequireAnyPermission
+                  permissions={[
+                    PERMISSIONS.LEAVE_REQUEST_READ,
+                    PERMISSIONS.LEAVE_REQUEST_READ_TEAM,
+                    PERMISSIONS.LEAVE_REQUEST_READ_ALL,
+                  ]}
+                >
+                  <LeaveCalendarPage />
+                </RequireAnyPermission>
+              }
+            />
+            <Route
+              path="leave/types"
+              element={
+                <RequirePermission permission={PERMISSIONS.LEAVE_TYPE_READ}>
+                  <LeaveTypesPage />
+                </RequirePermission>
+              }
+            />
+            <Route
+              path="leave/policies"
+              element={
+                <RequirePermission permission={PERMISSIONS.LEAVE_POLICY_READ}>
+                  <LeavePoliciesPage />
+                </RequirePermission>
+              }
+            />
+            <Route
+              path="leave/assignments"
+              element={
+                <RequireAnyPermission
+                  permissions={[PERMISSIONS.LEAVE_POLICY_READ, PERMISSIONS.LEAVE_POLICY_ASSIGN]}
+                >
+                  <LeavePolicyAssignmentsPage />
+                </RequireAnyPermission>
+              }
+            />
+            <Route
+              path="leave/balance-management"
+              element={
+                <RequirePermission permission={PERMISSIONS.LEAVE_BALANCE_READ_ALL}>
+                  <LeaveBalanceManagementPage />
+                </RequirePermission>
+              }
+            />
+            <Route
+              path="leave/transactions"
+              element={
+                <RequirePermission permission={PERMISSIONS.LEAVE_TRANSACTION_READ}>
+                  <LeaveTransactionsPage />
+                </RequirePermission>
+              }
+            />
+            <Route
+              path="leave/reports"
+              element={
+                <RequirePermission permission={PERMISSIONS.LEAVE_REPORT_READ}>
+                  <LeaveReportsPage />
                 </RequirePermission>
               }
             />

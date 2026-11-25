@@ -13,7 +13,9 @@
   "dependencies": {
     "@nestjs/common": "12.6.0",
     "@nestjs/core": "12.6.0",
+    "@nestjs/schedule": "^6.0.1",
     "@peopleops/database": "workspace:*",
+    "@peopleops/leave-engine": "workspace:*",
     "@peopleops/shared-types": "workspace:*",
     "@peopleops/validators": "workspace:*",
     "dotenv": "^17.2.3",

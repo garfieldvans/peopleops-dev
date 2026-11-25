@@ -37,13 +37,21 @@ export function AttendanceCalendarGrid({
               </Typography>
             </Stack>
             <Stack direction="row" spacing={8} align="center">
-              <Button variant="outlined" size="sm" onClick={() => onMonthChange(shiftMonth(month, -1))}>
+              <Button
+                variant="outlined"
+                size="sm"
+                onClick={() => onMonthChange(shiftMonth(month, -1))}
+              >
                 Previous
               </Button>
               <Typography variant="bodySmall" className="font-medium">
                 {month}
               </Typography>
-              <Button variant="outlined" size="sm" onClick={() => onMonthChange(shiftMonth(month, 1))}>
+              <Button
+                variant="outlined"
+                size="sm"
+                onClick={() => onMonthChange(shiftMonth(month, 1))}
+              >
                 Next
               </Button>
             </Stack>
@@ -75,7 +83,9 @@ export function AttendanceCalendarGrid({
                   <div
                     key={day.date}
                     className="min-h-20 rounded-md border border-[var(--nemo-neutral-200)] p-2 text-left"
-                    title={day.holiday?.name ?? statusLabel(day.status)}
+                    title={
+                      day.leave?.leaveType.name ?? day.holiday?.name ?? statusLabel(day.status)
+                    }
                   >
                     <Typography variant="caption" className="font-medium">
                       {Number(day.date.slice(8, 10))}
@@ -85,7 +95,16 @@ export function AttendanceCalendarGrid({
                         {statusLabel(day.status)}
                       </Badge>
                     </div>
-                    {day.record ? (
+                    {day.leave ? (
+                      <Typography variant="caption" color="neutral" className="mt-1 block">
+                        {day.leave.leaveType.name}
+                        {day.leave.requestMode === "HALF_DAY"
+                          ? day.leave.halfDayPeriod === "FIRST_HALF"
+                            ? " · AM"
+                            : " · PM"
+                          : ""}
+                      </Typography>
+                    ) : day.record ? (
                       <Typography variant="caption" color="neutral" className="mt-1 block">
                         {day.record.clockInLocal?.slice(11, 16) ?? "—"} –{" "}
                         {day.record.clockOutLocal?.slice(11, 16) ?? "—"}
@@ -102,6 +121,7 @@ export function AttendanceCalendarGrid({
                 <Typography variant="caption">Present: {calendar.summary.present}</Typography>
                 <Typography variant="caption">Late: {calendar.summary.late}</Typography>
                 <Typography variant="caption">Incomplete: {calendar.summary.incomplete}</Typography>
+                <Typography variant="caption">On leave: {calendar.summary.onLeave}</Typography>
                 <Typography variant="caption">Holiday: {calendar.summary.holiday}</Typography>
                 <Typography variant="caption">Off: {calendar.summary.off}</Typography>
               </Stack>

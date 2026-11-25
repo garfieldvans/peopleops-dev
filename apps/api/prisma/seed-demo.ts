@@ -2,6 +2,7 @@ import { config } from "dotenv";
 import argon2 from "argon2";
 import { DateTime } from "luxon";
 import { createPrismaClient } from "@peopleops/database";
+import { createDebit, ensureEntitlementPeriod, todayKey } from "@peopleops/leave-engine";
 import { ROLE_CODES, type RoleCode } from "@peopleops/shared-types";
 
 config({ path: ["../../.env", ".env"], quiet: true });
@@ -440,6 +441,268 @@ async function main(): Promise<void> {
             reason: "Traffic made me arrive later than my actual start time.",
           },
         });
+      }
+    }
+
+    const leaveTypeDefinitions = [
+      {
+        code: "ANNUAL_LEAVE",
+        name: "Annual Leave",
+        description: "Paid annual leave",
+        isPaid: true,
+        requiresAttachment: false,
+        allowHalfDay: true,
+        requiresBalance: true,
+      },
+      {
+        code: "SICK_LEAVE",
+        name: "Sick Leave",
+        description: "Paid sick leave",
+        isPaid: true,
+        requiresAttachment: false,
+        allowHalfDay: false,
+        requiresBalance: true,
+      },
+      {
+        code: "UNPAID_LEAVE",
+        name: "Unpaid Leave",
+        description: "Leave without pay",
+        isPaid: false,
+        requiresAttachment: false,
+        allowHalfDay: false,
+        requiresBalance: false,
+      },
+    ];
+    for (const definition of leaveTypeDefinitions) {
+      await prisma.leaveType.upsert({
+        where: { code: definition.code },
+        create: {
+          ...definition,
+          requiresApproval: true,
+          allowPastDates: false,
+          allowFutureDates: true,
+          status: "ACTIVE",
+        },
+        update: {
+          name: definition.name,
+          description: definition.description,
+          isPaid: definition.isPaid,
+          requiresAttachment: definition.requiresAttachment,
+          allowHalfDay: definition.allowHalfDay,
+          requiresBalance: definition.requiresBalance,
+        },
+      });
+    }
+    const annualType = await prisma.leaveType.findUniqueOrThrow({
+      where: { code: "ANNUAL_LEAVE" },
+    });
+    const sickType = await prisma.leaveType.findUniqueOrThrow({
+      where: { code: "SICK_LEAVE" },
+    });
+    const unpaidType = await prisma.leaveType.findUniqueOrThrow({
+      where: { code: "UNPAID_LEAVE" },
+    });
+
+    const policyDefinitions = [
+      {
+        code: "ANNUAL-2026",
+        name: "Annual Leave 2026",
+        leaveTypeId: annualType.id,
+        entitlementAmount: 12,
+        accrualMethod: "GRANTED_UPFRONT" as const,
+        accrualFrequency: "ONE_TIME" as const,
+        carryOverEnabled: true,
+        maxCarryOverAmount: 5,
+        carryOverExpirationMonths: 3,
+        minRequestDuration: 0.5,
+        maxRequestDuration: 12,
+        allowHalfDay: true,
+        approvalMode: "MANAGER_AND_HR" as const,
+      },
+      {
+        code: "SICK-2026",
+        name: "Sick Leave 2026",
+        leaveTypeId: sickType.id,
+        entitlementAmount: 12,
+        accrualMethod: "GRANTED_UPFRONT" as const,
+        accrualFrequency: "ONE_TIME" as const,
+        carryOverEnabled: false,
+        maxCarryOverAmount: null,
+        carryOverExpirationMonths: null,
+        minRequestDuration: 1,
+        maxRequestDuration: 12,
+        allowHalfDay: false,
+        approvalMode: "MANAGER" as const,
+      },
+      {
+        code: "UNPAID-2026",
+        name: "Unpaid Leave 2026",
+        leaveTypeId: unpaidType.id,
+        entitlementAmount: 0,
+        accrualMethod: "MANUAL_GRANT" as const,
+        accrualFrequency: "ONE_TIME" as const,
+        carryOverEnabled: false,
+        maxCarryOverAmount: null,
+        carryOverExpirationMonths: null,
+        minRequestDuration: 0.5,
+        maxRequestDuration: 30,
+        allowHalfDay: false,
+        approvalMode: "HR" as const,
+      },
+    ];
+    for (const definition of policyDefinitions) {
+      await prisma.leavePolicy.upsert({
+        where: { code: definition.code },
+        create: {
+          ...definition,
+          description: "Demo leave policy",
+          entitlementUnit: "DAY",
+          accrualStartRule: "PERIOD_START",
+          eligibilityMonths: 0,
+          minAdvanceNoticeDays: 0,
+          allowNegativeBalance: false,
+          allowUnpaidLeave: true,
+          leaveYearStartMonth: 1,
+          cancellationCutoffDays: 0,
+          effectiveFrom: new Date("2026-01-01T00:00:00.000Z"),
+          status: "ACTIVE",
+        },
+        update: {},
+      });
+    }
+
+    const employeesForLeave = await prisma.employee.findMany({
+      where: { employmentStatus: { in: ["ACTIVE", "PROBATION"] } },
+    });
+    const policiesForLeave = await prisma.leavePolicy.findMany({
+      where: { code: { in: ["ANNUAL-2026", "SICK-2026", "UNPAID-2026"] } },
+    });
+    const leaveAssignmentIds: string[] = [];
+    for (const employee of employeesForLeave) {
+      for (const policy of policiesForLeave) {
+        const existing = await prisma.leavePolicyAssignment.findFirst({
+          where: { employeeId: employee.id, leaveTypeId: policy.leaveTypeId, status: "ACTIVE" },
+        });
+        if (existing) {
+          leaveAssignmentIds.push(existing.id);
+          continue;
+        }
+        const assignment = await prisma.leavePolicyAssignment.create({
+          data: {
+            employeeId: employee.id,
+            leaveTypeId: policy.leaveTypeId,
+            policyId: policy.id,
+            effectiveFrom: new Date("2026-01-01T00:00:00.000Z"),
+            status: "ACTIVE",
+            notes: "Demo leave policy assignment",
+          },
+        });
+        leaveAssignmentIds.push(assignment.id);
+      }
+    }
+    for (const assignmentId of leaveAssignmentIds) {
+      await ensureEntitlementPeriod(prisma, assignmentId, todayKey());
+    }
+
+    const sampleLeaveEmployee = await prisma.employee.findUniqueOrThrow({
+      where: { employeeNumber: "EMP-0002" },
+    });
+    const sampleAnnualAssignment = await prisma.leavePolicyAssignment.findFirst({
+      where: {
+        employeeId: sampleLeaveEmployee.id,
+        leaveTypeId: annualType.id,
+        status: "ACTIVE",
+      },
+    });
+    if (sampleAnnualAssignment) {
+      const period = await ensureEntitlementPeriod(
+        prisma,
+        sampleAnnualAssignment.id,
+        todayKey(),
+      );
+      if (period) {
+        const nextWeekday = (start: DateTime): DateTime => {
+          let value = start;
+          while (value.weekday > 5) value = value.plus({ days: 1 });
+          return value.startOf("day");
+        };
+        const pendingDate = nextWeekday(DateTime.now().setZone(timezone).plus({ days: 10 }));
+        const approvedDate = nextWeekday(DateTime.now().setZone(timezone).plus({ days: 21 }));
+        const dateKeys = [
+          pendingDate.toFormat("yyyy-MM-dd"),
+          approvedDate.toFormat("yyyy-MM-dd"),
+        ];
+        for (const dateKey of dateKeys) {
+          const existing = await prisma.leaveRequest.findFirst({
+            where: {
+              employeeId: sampleLeaveEmployee.id,
+              startDate: new Date(`${dateKey}T00:00:00.000Z`),
+            },
+          });
+          if (existing) continue;
+          const approved = dateKey === dateKeys[1];
+          await prisma.$transaction(async (tx) => {
+            const request = await tx.leaveRequest.create({
+              data: {
+                employeeId: sampleLeaveEmployee.id,
+                leaveTypeId: annualType.id,
+                entitlementPeriodId: period.id,
+                startDate: new Date(`${dateKey}T00:00:00.000Z`),
+                endDate: new Date(`${dateKey}T00:00:00.000Z`),
+                duration: 1,
+                durationUnit: "DAY",
+                requestMode: "FULL_DAY",
+                reason: approved
+                  ? "Demo approved annual leave"
+                  : "Demo pending annual leave",
+                status: approved ? "APPROVED" : "PENDING",
+                approvalStage: approved ? null : "MANAGER",
+                submittedAt: new Date(),
+                reviewedAt: approved ? new Date() : null,
+                reviewComments: approved ? "Approved in demo seed" : null,
+                days: {
+                  create: {
+                    date: new Date(`${dateKey}T00:00:00.000Z`),
+                    duration: 1,
+                  },
+                },
+              },
+            });
+            if (approved) {
+              await createDebit(tx, {
+                employeeId: sampleLeaveEmployee.id,
+                leaveTypeId: annualType.id,
+                entitlementPeriodId: period.id,
+                type: "LEAVE_DEDUCTION",
+                amount: 1,
+                transactionDate: dateKey,
+                sourceType: "LEAVE_REQUEST",
+                sourceRef: request.id,
+                description: "Demo approved annual leave",
+              });
+              await tx.leaveRequestApproval.create({
+                data: {
+                  requestId: request.id,
+                  stage: "HR",
+                  decision: "APPROVED",
+                  actorUserId: hrUser.id,
+                  actorName: hrUser.name,
+                  comment: "Approved in demo seed",
+                },
+              });
+            } else {
+              await tx.leaveBalanceReservation.create({
+                data: {
+                  requestId: request.id,
+                  employeeId: sampleLeaveEmployee.id,
+                  leaveTypeId: annualType.id,
+                  entitlementPeriodId: period.id,
+                  amount: 1,
+                },
+              });
+            }
+          });
+        }
       }
     }
 

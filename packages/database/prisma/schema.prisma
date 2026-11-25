@@ -42,6 +42,12 @@ model User {
   scheduleAssignmentsCreated EmployeeScheduleAssignment[] @relation("ScheduleAssignmentCreator")
   attendanceBreaksCreated    AttendanceBreak[]            @relation("AttendanceBreakCreator")
   correctionsReviewed        AttendanceCorrection[]       @relation("AttendanceCorrectionReviewer")
+  leaveAssignmentsCreated    LeavePolicyAssignment[]      @relation("LeaveAssignmentCreator")
+  leaveTransactionsCreated   LeaveTransaction[]           @relation("LeaveTransactionCreator")
+  leaveApprovals             LeaveRequestApproval[]       @relation("LeaveApprovalActor")
+  leaveRequestsReviewed      LeaveRequest[]               @relation("LeaveRequestReviewer")
+  leaveRequestsCancelled     LeaveRequest[]               @relation("LeaveRequestCanceller")
+  leaveAttachmentsUploaded   LeaveAttachment[]            @relation("LeaveAttachmentUploader")
 
   @@map("users")
 }
@@ -358,6 +364,11 @@ model Employee {
   scheduleAssignments   EmployeeScheduleAssignment[]
   attendanceRecords     AttendanceRecord[]
   attendanceCorrections AttendanceCorrection[]
+  leaveAssignments      LeavePolicyAssignment[]
+  leavePeriods          LeaveEntitlementPeriod[]
+  leaveTransactions     LeaveTransaction[]
+  leaveRequests         LeaveRequest[]
+  leaveReservations     LeaveBalanceReservation[]
 
   @@index([lastName, firstName])
   @@index([branchId])
@@ -451,6 +462,7 @@ enum AttendanceStatus {
   ABSENT
   HALF_DAY
   INCOMPLETE
+  ON_LEAVE
 }
 
 enum AttendanceCorrectionStatus {
@@ -653,4 +665,378 @@ model Holiday {
   @@index([date, status])
   @@index([branchId])
   @@map("holidays")
+}
+
+// ---------------------------------------------------------------------------
+// Phase 5 — Leave management
+// ---------------------------------------------------------------------------
+
+enum LeaveDurationUnit {
+  DAY
+  HOUR
+}
+
+enum LeaveAccrualMethod {
+  GRANTED_UPFRONT
+  MONTHLY_ACCRUAL
+  ANNUAL_ACCRUAL
+  MANUAL_GRANT
+}
+
+enum LeaveAccrualFrequency {
+  MONTHLY
+  ANNUAL
+  ONE_TIME
+}
+
+enum LeaveAccrualStartRule {
+  PERIOD_START
+  ASSIGNMENT_START
+}
+
+enum LeaveApprovalMode {
+  MANAGER
+  HR
+  MANAGER_AND_HR
+}
+
+enum LeaveApprovalStage {
+  MANAGER
+  HR
+}
+
+enum LeaveApprovalDecision {
+  APPROVED
+  REJECTED
+}
+
+enum LeaveRequestStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+  WITHDRAWN
+}
+
+enum LeaveRequestMode {
+  FULL_DAY
+  HALF_DAY
+  HOURLY
+}
+
+enum LeaveHalfDayPeriod {
+  FIRST_HALF
+  SECOND_HALF
+}
+
+enum LeaveTransactionType {
+  OPENING_BALANCE
+  ENTITLEMENT
+  ACCRUAL
+  LEAVE_DEDUCTION
+  LEAVE_REVERSAL
+  CARRY_OVER
+  EXPIRATION
+  ADJUSTMENT
+}
+
+enum LeaveReservationStatus {
+  PENDING
+  CONSUMED
+  RELEASED
+}
+
+enum LeavePeriodStatus {
+  OPEN
+  CLOSED
+}
+
+model LeaveType {
+  id                 String       @id @default(uuid()) @db.Uuid
+  name               String
+  code               String       @unique
+  description        String?
+  isPaid             Boolean      @default(true) @map("is_paid")
+  requiresApproval   Boolean      @default(true) @map("requires_approval")
+  requiresAttachment Boolean      @default(false) @map("requires_attachment")
+  allowHalfDay       Boolean      @default(false) @map("allow_half_day")
+  allowPastDates     Boolean      @default(false) @map("allow_past_dates")
+  allowFutureDates   Boolean      @default(true) @map("allow_future_dates")
+  requiresBalance    Boolean      @default(true) @map("requires_balance")
+  status             MasterStatus @default(ACTIVE)
+  createdAt          DateTime     @default(now()) @map("created_at")
+  updatedAt          DateTime     @updatedAt @map("updated_at")
+
+  policies     LeavePolicy[]
+  assignments  LeavePolicyAssignment[]
+  periods      LeaveEntitlementPeriod[]
+  transactions LeaveTransaction[]
+  requests     LeaveRequest[]
+  reservations LeaveBalanceReservation[]
+
+  @@index([status])
+  @@map("leave_types")
+}
+
+model LeavePolicy {
+  id                        String                @id @default(uuid()) @db.Uuid
+  name                      String
+  code                      String                @unique
+  description               String?
+  leaveTypeId               String                @map("leave_type_id") @db.Uuid
+  entitlementAmount         Decimal               @default(0) @map("entitlement_amount") @db.Decimal(10, 2)
+  entitlementUnit           LeaveDurationUnit     @default(DAY) @map("entitlement_unit")
+  accrualMethod             LeaveAccrualMethod    @default(GRANTED_UPFRONT) @map("accrual_method")
+  accrualFrequency          LeaveAccrualFrequency @default(ONE_TIME) @map("accrual_frequency")
+  accrualStartRule          LeaveAccrualStartRule @default(PERIOD_START) @map("accrual_start_rule")
+  eligibilityMonths         Int                   @default(0) @map("eligibility_months")
+  maxBalance                Decimal?              @map("max_balance") @db.Decimal(10, 2)
+  carryOverEnabled          Boolean               @default(false) @map("carry_over_enabled")
+  maxCarryOverAmount        Decimal?              @map("max_carry_over_amount") @db.Decimal(10, 2)
+  carryOverExpirationMonths Int?                  @map("carry_over_expiration_months")
+  minRequestDuration        Decimal?              @map("min_request_duration") @db.Decimal(10, 2)
+  maxRequestDuration        Decimal?              @map("max_request_duration") @db.Decimal(10, 2)
+  minAdvanceNoticeDays      Int                   @default(0) @map("min_advance_notice_days")
+  allowNegativeBalance      Boolean               @default(false) @map("allow_negative_balance")
+  allowHalfDay              Boolean               @default(false) @map("allow_half_day")
+  allowUnpaidLeave          Boolean               @default(true) @map("allow_unpaid_leave")
+  approvalMode              LeaveApprovalMode     @default(MANAGER) @map("approval_mode")
+  leaveYearStartMonth       Int                   @default(1) @map("leave_year_start_month")
+  cancellationCutoffDays    Int                   @default(0) @map("cancellation_cutoff_days")
+  effectiveFrom             DateTime              @map("effective_from") @db.Date
+  effectiveTo               DateTime?             @map("effective_to") @db.Date
+  status                    MasterStatus          @default(ACTIVE)
+  createdAt                 DateTime              @default(now()) @map("created_at")
+  updatedAt                 DateTime              @updatedAt @map("updated_at")
+
+  leaveType   LeaveType                @relation(fields: [leaveTypeId], references: [id], onDelete: Restrict)
+  assignments LeavePolicyAssignment[]
+  periods     LeaveEntitlementPeriod[]
+
+  @@index([leaveTypeId, status])
+  @@index([effectiveFrom, effectiveTo])
+  @@map("leave_policies")
+}
+
+/// Explicit, effective-dated assignment. The exclusion constraint in the migration
+/// prevents two ACTIVE assignments for the same employee/type from overlapping.
+model LeavePolicyAssignment {
+  id            String       @id @default(uuid()) @db.Uuid
+  employeeId    String       @map("employee_id") @db.Uuid
+  leaveTypeId   String       @map("leave_type_id") @db.Uuid
+  policyId      String       @map("policy_id") @db.Uuid
+  effectiveFrom DateTime     @map("effective_from") @db.Date
+  effectiveTo   DateTime?    @map("effective_to") @db.Date
+  status        MasterStatus @default(ACTIVE)
+  notes         String?
+  createdById   String?      @map("created_by_id") @db.Uuid
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+
+  employee  Employee                 @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveType LeaveType                @relation(fields: [leaveTypeId], references: [id], onDelete: Restrict)
+  policy    LeavePolicy              @relation(fields: [policyId], references: [id], onDelete: Restrict)
+  createdBy User?                    @relation("LeaveAssignmentCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  periods   LeaveEntitlementPeriod[]
+
+  @@index([employeeId, leaveTypeId, effectiveFrom])
+  @@index([policyId])
+  @@map("leave_policy_assignments")
+}
+
+/// Immutable snapshot of one employee/type leave year. The policy snapshot keeps
+/// historical calculations stable when the policy row is edited later.
+model LeaveEntitlementPeriod {
+  id                String            @id @default(uuid()) @db.Uuid
+  employeeId        String            @map("employee_id") @db.Uuid
+  leaveTypeId       String            @map("leave_type_id") @db.Uuid
+  policyId          String            @map("policy_id") @db.Uuid
+  assignmentId      String?           @map("assignment_id") @db.Uuid
+  periodStart       DateTime          @map("period_start") @db.Date
+  periodEnd         DateTime          @map("period_end") @db.Date
+  entitlementAmount Decimal           @map("entitlement_amount") @db.Decimal(10, 2)
+  entitlementUnit   LeaveDurationUnit @default(DAY) @map("entitlement_unit")
+  policySnapshot    Json              @map("policy_snapshot")
+  status            LeavePeriodStatus @default(OPEN)
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+
+  employee     Employee                  @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  leaveType    LeaveType                 @relation(fields: [leaveTypeId], references: [id], onDelete: Restrict)
+  policy       LeavePolicy               @relation(fields: [policyId], references: [id], onDelete: Restrict)
+  assignment   LeavePolicyAssignment?    @relation(fields: [assignmentId], references: [id], onDelete: SetNull)
+  transactions LeaveTransaction[]
+  requests     LeaveRequest[]
+  reservations LeaveBalanceReservation[]
+
+  @@unique([employeeId, leaveTypeId, periodStart, periodEnd])
+  @@index([employeeId, leaveTypeId, status])
+  @@index([periodStart, periodEnd])
+  @@map("leave_entitlement_periods")
+}
+
+/// Append-only signed ledger. Positive amounts credit the balance, negative amounts
+/// consume it. The unique source key is the database-level idempotency guarantee.
+model LeaveTransaction {
+  id                  String               @id @default(uuid()) @db.Uuid
+  employeeId          String               @map("employee_id") @db.Uuid
+  leaveTypeId         String               @map("leave_type_id") @db.Uuid
+  entitlementPeriodId String               @map("entitlement_period_id") @db.Uuid
+  type                LeaveTransactionType
+  amount              Decimal              @db.Decimal(10, 2)
+  transactionDate     DateTime             @map("transaction_date") @db.Date
+  expiresAt           DateTime?            @map("expires_at") @db.Date
+  sourceType          String               @map("source_type") @db.VarChar(40)
+  sourceRef           String               @map("source_ref") @db.VarChar(160)
+  description         String?
+  reversalOfId        String?              @map("reversal_of_id") @db.Uuid
+  createdById         String?              @map("created_by_id") @db.Uuid
+  createdAt           DateTime             @default(now()) @map("created_at")
+
+  employee      Employee                     @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  leaveType     LeaveType                    @relation(fields: [leaveTypeId], references: [id], onDelete: Restrict)
+  period        LeaveEntitlementPeriod       @relation(fields: [entitlementPeriodId], references: [id], onDelete: Restrict)
+  createdBy     User?                        @relation("LeaveTransactionCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  reversalOf    LeaveTransaction?            @relation("LeaveTransactionReversal", fields: [reversalOfId], references: [id], onDelete: SetNull)
+  reversals     LeaveTransaction[]           @relation("LeaveTransactionReversal")
+  allocations   LeaveTransactionAllocation[] @relation("AllocationTransaction")
+  allocatedFrom LeaveTransactionAllocation[] @relation("AllocationSource")
+
+  @@unique([sourceType, sourceRef, type])
+  @@index([employeeId, leaveTypeId, transactionDate])
+  @@index([entitlementPeriodId])
+  @@index([expiresAt])
+  @@map("leave_transactions")
+}
+
+/// FIFO allocation detail: a debit transaction consumes named positive tranches.
+model LeaveTransactionAllocation {
+  id                  String   @id @default(uuid()) @db.Uuid
+  transactionId       String   @map("transaction_id") @db.Uuid
+  sourceTransactionId String   @map("source_transaction_id") @db.Uuid
+  amount              Decimal  @db.Decimal(10, 2)
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  transaction       LeaveTransaction @relation("AllocationTransaction", fields: [transactionId], references: [id], onDelete: Cascade)
+  sourceTransaction LeaveTransaction @relation("AllocationSource", fields: [sourceTransactionId], references: [id], onDelete: Restrict)
+
+  @@unique([transactionId, sourceTransactionId])
+  @@index([sourceTransactionId])
+  @@map("leave_transaction_allocations")
+}
+
+model LeaveBalanceReservation {
+  id                  String                 @id @default(uuid()) @db.Uuid
+  requestId           String                 @unique @map("request_id") @db.Uuid
+  employeeId          String                 @map("employee_id") @db.Uuid
+  leaveTypeId         String                 @map("leave_type_id") @db.Uuid
+  entitlementPeriodId String                 @map("entitlement_period_id") @db.Uuid
+  amount              Decimal                @db.Decimal(10, 2)
+  status              LeaveReservationStatus @default(PENDING)
+  createdAt           DateTime               @default(now()) @map("created_at")
+  releasedAt          DateTime?              @map("released_at")
+
+  request   LeaveRequest           @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  employee  Employee               @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  leaveType LeaveType              @relation(fields: [leaveTypeId], references: [id], onDelete: Restrict)
+  period    LeaveEntitlementPeriod @relation(fields: [entitlementPeriodId], references: [id], onDelete: Restrict)
+
+  @@index([employeeId, leaveTypeId, status])
+  @@index([entitlementPeriodId, status])
+  @@map("leave_balance_reservations")
+}
+
+model LeaveRequest {
+  id                  String              @id @default(uuid()) @db.Uuid
+  employeeId          String              @map("employee_id") @db.Uuid
+  leaveTypeId         String              @map("leave_type_id") @db.Uuid
+  entitlementPeriodId String              @map("entitlement_period_id") @db.Uuid
+  clientRequestId     String?             @map("client_request_id") @db.VarChar(100)
+  startDate           DateTime            @map("start_date") @db.Date
+  endDate             DateTime            @map("end_date") @db.Date
+  duration            Decimal             @db.Decimal(10, 2)
+  durationUnit        LeaveDurationUnit   @default(DAY) @map("duration_unit")
+  requestMode         LeaveRequestMode    @default(FULL_DAY) @map("request_mode")
+  halfDayPeriod       LeaveHalfDayPeriod? @map("half_day_period")
+  reason              String
+  status              LeaveRequestStatus  @default(DRAFT)
+  approvalStage       LeaveApprovalStage? @map("approval_stage")
+  submittedAt         DateTime?           @map("submitted_at")
+  reviewedById        String?             @map("reviewed_by_id") @db.Uuid
+  reviewedAt          DateTime?           @map("reviewed_at")
+  reviewComments      String?             @map("review_comments")
+  withdrawnAt         DateTime?           @map("withdrawn_at")
+  cancelledAt         DateTime?           @map("cancelled_at")
+  cancelledById       String?             @map("cancelled_by_id") @db.Uuid
+  cancellationReason  String?             @map("cancellation_reason")
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
+
+  employee          Employee                 @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  leaveType         LeaveType                @relation(fields: [leaveTypeId], references: [id], onDelete: Restrict)
+  entitlementPeriod LeaveEntitlementPeriod   @relation(fields: [entitlementPeriodId], references: [id], onDelete: Restrict)
+  reviewer          User?                    @relation("LeaveRequestReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  cancelledBy       User?                    @relation("LeaveRequestCanceller", fields: [cancelledById], references: [id], onDelete: SetNull)
+  days              LeaveRequestDay[]
+  approvals         LeaveRequestApproval[]
+  attachments       LeaveAttachment[]
+  reservation       LeaveBalanceReservation?
+
+  @@unique([employeeId, clientRequestId])
+  @@index([employeeId, status])
+  @@index([status, createdAt])
+  @@index([leaveTypeId, startDate, endDate])
+  @@index([startDate, endDate])
+  @@map("leave_requests")
+}
+
+model LeaveRequestDay {
+  id            String              @id @default(uuid()) @db.Uuid
+  requestId     String              @map("request_id") @db.Uuid
+  date          DateTime            @db.Date
+  duration      Decimal             @db.Decimal(4, 2)
+  halfDayPeriod LeaveHalfDayPeriod? @map("half_day_period")
+
+  request LeaveRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@unique([requestId, date])
+  @@index([date])
+  @@map("leave_request_days")
+}
+
+model LeaveRequestApproval {
+  id          String                @id @default(uuid()) @db.Uuid
+  requestId   String                @map("request_id") @db.Uuid
+  stage       LeaveApprovalStage
+  decision    LeaveApprovalDecision
+  actorUserId String?               @map("actor_user_id") @db.Uuid
+  actorName   String                @map("actor_name")
+  comment     String?
+  isOverride  Boolean               @default(false) @map("is_override")
+  createdAt   DateTime              @default(now()) @map("created_at")
+
+  request LeaveRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  actor   User?        @relation("LeaveApprovalActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([requestId, createdAt])
+  @@index([actorUserId])
+  @@map("leave_request_approvals")
+}
+
+model LeaveAttachment {
+  id           String   @id @default(uuid()) @db.Uuid
+  requestId    String   @map("request_id") @db.Uuid
+  fileName     String   @map("file_name")
+  mimeType     String   @map("mime_type")
+  sizeBytes    Int      @map("size_bytes")
+  storageKey   String   @unique @map("storage_key")
+  uploadedById String?  @map("uploaded_by_id") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  request    LeaveRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  uploadedBy User?        @relation("LeaveAttachmentUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  @@index([requestId])
+  @@map("leave_attachments")
 }

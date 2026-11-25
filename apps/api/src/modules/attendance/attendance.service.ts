@@ -29,6 +29,7 @@ import {
   monthKeyOf,
 } from "../../common/time/zoned-time";
 import { EmployeesService, type EmployeeScope } from "../employee/employees.service";
+import { LeaveIntegrationService } from "../leave/leave-integration.service";
 import { calculateAttendance } from "./attendance-calculation";
 import {
   attendanceInclude,
@@ -87,6 +88,7 @@ export class AttendanceService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly employees: EmployeesService,
+    private readonly leaveIntegration: LeaveIntegrationService,
   ) {}
 
   async getCompanyTimezone(): Promise<string> {
@@ -618,9 +620,12 @@ export class AttendanceService {
     const resolved = record
       ? null
       : await this.resolveClockSchedule(employee.id, now, timezone);
-    const pendingCorrections = await this.prisma.attendanceCorrection.count({
-      where: { employeeId: employee.id, status: "PENDING" },
-    });
+    const [pendingCorrections, leave] = await Promise.all([
+      this.prisma.attendanceCorrection.count({
+        where: { employeeId: employee.id, status: "PENDING" },
+      }),
+      this.leaveIntegration.approvedDay(employee.id, today),
+    ]);
 
     let state: AttendanceDashboard["state"];
     if (record?.clockOutAt) state = "CLOCKED_OUT";
@@ -628,6 +633,7 @@ export class AttendanceService {
       state = "ON_BREAK";
     } else if (record?.clockInAt) state = "WORKING";
     else if (holiday) state = "HOLIDAY";
+    else if (leave) state = "ON_LEAVE";
     else if (!resolved) state = "DAY_OFF";
     else state = "NOT_CLOCKED_IN";
 
@@ -659,6 +665,15 @@ export class AttendanceService {
       state,
       schedule,
       holiday,
+      leave: leave
+        ? {
+            requestId: leave.requestId,
+            leaveType: leave.leaveType,
+            duration: leave.duration,
+            requestMode: leave.requestMode,
+            halfDayPeriod: leave.halfDayPeriod,
+          }
+        : null,
       record: mappedRecord,
       pendingCorrections,
     };
@@ -675,7 +690,7 @@ export class AttendanceService {
     });
     const employeeIds = employees.map((employee) => employee.id);
 
-    const [assignments, records, holidays, pendingCorrections] = await Promise.all([
+    const [assignments, records, holidays, pendingCorrections, leaveByEmployee] = await Promise.all([
       this.prisma.employeeScheduleAssignment.findMany({
         where: {
           employeeId: { in: employeeIds },
@@ -705,6 +720,7 @@ export class AttendanceService {
           employeeId: { in: employeeIds },
         },
       }),
+      this.leaveIntegration.approvedDaysForEmployees(employeeIds, workDate),
     ]);
 
     const recordedIds = new Set(records.map((record) => record.employeeId));
@@ -721,7 +737,7 @@ export class AttendanceService {
       const holiday = holidays.some(
         (entry) => entry.branchId === null || entry.branchId === employee.branchId,
       );
-      if (!holiday) absent += 1;
+      if (!holiday && !leaveByEmployee.has(employee.id)) absent += 1;
     }
 
     const present = records.filter((record) => record.clockInAt !== null).length;
@@ -737,6 +753,7 @@ export class AttendanceService {
       present,
       late,
       absent,
+      onLeave: leaveByEmployee.size,
       incomplete,
       pendingCorrections,
     };
@@ -838,12 +855,17 @@ export class AttendanceService {
     const firstDay = days[0];
     const lastDay = days[days.length - 1];
     if (!firstDay || !lastDay) {
-      return { month, timezone, days: [], summary: { present: 0, late: 0, incomplete: 0, off: 0, holiday: 0 } };
+      return {
+        month,
+        timezone,
+        days: [],
+        summary: { present: 0, late: 0, incomplete: 0, off: 0, holiday: 0, onLeave: 0 },
+      };
     }
     const rangeStart = dateOnly(firstDay);
     const rangeEnd = dateOnly(lastDay);
 
-    const [assignments, records, holidays] = await Promise.all([
+    const [assignments, records, holidays, leaveDays] = await Promise.all([
       this.prisma.employeeScheduleAssignment.findMany({
         where: {
           employeeId,
@@ -865,11 +887,13 @@ export class AttendanceService {
         },
         select: { id: true, name: true, type: true, date: true, branchId: true },
       }),
+      this.leaveIntegration.approvedDays(employeeId, firstDay, lastDay),
     ]);
 
     const recordByDate = new Map(records.map((row) => [dateKey(row.workDate), row]));
+    const leaveByDate = new Map(leaveDays.map((row) => [row.date, row]));
     const calendarDays: AttendanceCalendarDay[] = [];
-    const summary = { present: 0, late: 0, incomplete: 0, off: 0, holiday: 0 };
+    const summary = { present: 0, late: 0, incomplete: 0, off: 0, holiday: 0, onLeave: 0 };
 
     for (const day of days) {
       const holidayCandidates = holidays.filter((entry) => dateKey(entry.date) === day);
@@ -877,6 +901,7 @@ export class AttendanceService {
         holidayCandidates.find((entry) => entry.branchId === employee?.branchId) ??
         holidayCandidates[0];
       const record = recordByDate.get(day) ?? null;
+      const leave = leaveByDate.get(day) ?? null;
       const assignment = assignments.find(
         (row) =>
           dateKey(row.effectiveFrom) <= day &&
@@ -895,6 +920,9 @@ export class AttendanceService {
       } else if (holiday) {
         status = "HOLIDAY";
         summary.holiday += 1;
+      } else if (leave) {
+        status = "ON_LEAVE";
+        summary.onLeave += 1;
       } else if (!schedule) {
         status = "OFF";
         summary.off += 1;
@@ -908,6 +936,15 @@ export class AttendanceService {
         status,
         holiday: holiday
           ? { id: holiday.id, name: holiday.name, type: holiday.type }
+          : null,
+        leave: leave
+          ? {
+              requestId: leave.requestId,
+              leaveType: leave.leaveType,
+              duration: leave.duration,
+              requestMode: leave.requestMode,
+              halfDayPeriod: leave.halfDayPeriod,
+            }
           : null,
         record: record ? toAttendanceRecord(record) : null,
       });

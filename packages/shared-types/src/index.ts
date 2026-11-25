@@ -107,6 +107,31 @@ export const PERMISSIONS = {
   HOLIDAY_CREATE: "holiday.create",
   HOLIDAY_UPDATE: "holiday.update",
   HOLIDAY_DEACTIVATE: "holiday.deactivate",
+  LEAVE_TYPE_READ: "leave_type.read",
+  LEAVE_TYPE_CREATE: "leave_type.create",
+  LEAVE_TYPE_UPDATE: "leave_type.update",
+  LEAVE_TYPE_DEACTIVATE: "leave_type.deactivate",
+  LEAVE_POLICY_READ: "leave_policy.read",
+  LEAVE_POLICY_CREATE: "leave_policy.create",
+  LEAVE_POLICY_UPDATE: "leave_policy.update",
+  LEAVE_POLICY_DEACTIVATE: "leave_policy.deactivate",
+  LEAVE_POLICY_ASSIGN: "leave_policy.assign",
+  LEAVE_REQUEST_READ: "leave_request.read",
+  LEAVE_REQUEST_READ_ALL: "leave_request.read_all",
+  LEAVE_REQUEST_READ_TEAM: "leave_request.read_team",
+  LEAVE_REQUEST_CREATE: "leave_request.create",
+  LEAVE_REQUEST_SUBMIT: "leave_request.submit",
+  LEAVE_REQUEST_WITHDRAW: "leave_request.withdraw",
+  LEAVE_REQUEST_APPROVE: "leave_request.approve",
+  LEAVE_REQUEST_REJECT: "leave_request.reject",
+  LEAVE_REQUEST_CANCEL: "leave_request.cancel",
+  LEAVE_REQUEST_OVERRIDE: "leave_request.override",
+  LEAVE_BALANCE_READ: "leave_balance.read",
+  LEAVE_BALANCE_READ_ALL: "leave_balance.read_all",
+  LEAVE_BALANCE_ADJUST: "leave_balance.adjust",
+  LEAVE_TRANSACTION_READ: "leave_transaction.read",
+  LEAVE_TRANSACTION_READ_ALL: "leave_transaction.read_all",
+  LEAVE_REPORT_READ: "leave_report.read",
 } as const;
 
 export type PermissionCode = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -438,7 +463,8 @@ export type AttendanceStatus =
   | "LATE_AND_EARLY_LEAVE"
   | "ABSENT"
   | "HALF_DAY"
-  | "INCOMPLETE";
+  | "INCOMPLETE"
+  | "ON_LEAVE";
 export const ATTENDANCE_STATUSES: readonly AttendanceStatus[] = [
   "PRESENT",
   "LATE",
@@ -447,6 +473,7 @@ export const ATTENDANCE_STATUSES: readonly AttendanceStatus[] = [
   "ABSENT",
   "HALF_DAY",
   "INCOMPLETE",
+  "ON_LEAVE",
 ];
 
 export type AttendanceCorrectionStatus = "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
@@ -579,11 +606,20 @@ export interface AttendanceRecord {
 
 export type AttendanceDayStatus = AttendanceStatus | "HOLIDAY" | "OFF" | "NO_RECORD";
 
+export interface AttendanceLeaveInfo {
+  requestId: string;
+  leaveType: { id: string; name: string; code: string };
+  duration: number;
+  requestMode: LeaveRequestMode;
+  halfDayPeriod: LeaveHalfDayPeriod | null;
+}
+
 export interface AttendanceCalendarDay {
   date: string;
   dayOfWeek: number;
   status: AttendanceDayStatus;
   holiday: { id: string; name: string; type: HolidayType } | null;
+  leave: AttendanceLeaveInfo | null;
   record: AttendanceRecord | null;
 }
 
@@ -597,6 +633,7 @@ export interface AttendanceCalendar {
     incomplete: number;
     off: number;
     holiday: number;
+    onLeave: number;
   };
 }
 
@@ -607,6 +644,7 @@ export type AttendanceTodayState =
   | "CLOCKED_OUT"
   | "DAY_OFF"
   | "HOLIDAY"
+  | "ON_LEAVE"
   | "NO_EMPLOYEE";
 
 export interface AttendanceDashboard {
@@ -621,6 +659,7 @@ export interface AttendanceDashboard {
     scheduledEndLocal: string;
   } | null;
   holiday: { id: string; name: string; type: HolidayType } | null;
+  leave: AttendanceLeaveInfo | null;
   record: AttendanceRecord | null;
   pendingCorrections: number;
 }
@@ -632,6 +671,7 @@ export interface AttendanceOverview {
   present: number;
   late: number;
   absent: number;
+  onLeave: number;
   incomplete: number;
   pendingCorrections: number;
 }
@@ -668,4 +708,325 @@ export interface Holiday {
   status: MasterStatus;
   createdAt: string;
   updatedAt: string;
+}
+
+// ---------------------------------------------------------------------------
+// Leave
+// ---------------------------------------------------------------------------
+
+export type LeaveDurationUnit = "DAY" | "HOUR";
+export const LEAVE_DURATION_UNITS: readonly LeaveDurationUnit[] = ["DAY", "HOUR"];
+
+export type LeaveAccrualMethod =
+  | "GRANTED_UPFRONT"
+  | "MONTHLY_ACCRUAL"
+  | "ANNUAL_ACCRUAL"
+  | "MANUAL_GRANT";
+export const LEAVE_ACCRUAL_METHODS: readonly LeaveAccrualMethod[] = [
+  "GRANTED_UPFRONT",
+  "MONTHLY_ACCRUAL",
+  "ANNUAL_ACCRUAL",
+  "MANUAL_GRANT",
+];
+
+export type LeaveAccrualFrequency = "MONTHLY" | "ANNUAL" | "ONE_TIME";
+export const LEAVE_ACCRUAL_FREQUENCIES: readonly LeaveAccrualFrequency[] = [
+  "MONTHLY",
+  "ANNUAL",
+  "ONE_TIME",
+];
+
+export type LeaveAccrualStartRule = "PERIOD_START" | "ASSIGNMENT_START";
+export const LEAVE_ACCRUAL_START_RULES: readonly LeaveAccrualStartRule[] = [
+  "PERIOD_START",
+  "ASSIGNMENT_START",
+];
+
+export type LeaveApprovalMode = "MANAGER" | "HR" | "MANAGER_AND_HR";
+export const LEAVE_APPROVAL_MODES: readonly LeaveApprovalMode[] = [
+  "MANAGER",
+  "HR",
+  "MANAGER_AND_HR",
+];
+
+export type LeaveApprovalStage = "MANAGER" | "HR";
+export const LEAVE_APPROVAL_STAGES: readonly LeaveApprovalStage[] = ["MANAGER", "HR"];
+
+export type LeaveRequestStatus =
+  | "DRAFT"
+  | "PENDING"
+  | "APPROVED"
+  | "REJECTED"
+  | "CANCELLED"
+  | "WITHDRAWN";
+export const LEAVE_REQUEST_STATUSES: readonly LeaveRequestStatus[] = [
+  "DRAFT",
+  "PENDING",
+  "APPROVED",
+  "REJECTED",
+  "CANCELLED",
+  "WITHDRAWN",
+];
+
+export type LeaveRequestMode = "FULL_DAY" | "HALF_DAY" | "HOURLY";
+export const LEAVE_REQUEST_MODES: readonly LeaveRequestMode[] = [
+  "FULL_DAY",
+  "HALF_DAY",
+  "HOURLY",
+];
+
+export type LeaveHalfDayPeriod = "FIRST_HALF" | "SECOND_HALF";
+export const LEAVE_HALF_DAY_PERIODS: readonly LeaveHalfDayPeriod[] = [
+  "FIRST_HALF",
+  "SECOND_HALF",
+];
+
+export type LeaveTransactionType =
+  | "OPENING_BALANCE"
+  | "ENTITLEMENT"
+  | "ACCRUAL"
+  | "LEAVE_DEDUCTION"
+  | "LEAVE_REVERSAL"
+  | "CARRY_OVER"
+  | "EXPIRATION"
+  | "ADJUSTMENT";
+
+export type LeaveReservationStatus = "PENDING" | "CONSUMED" | "RELEASED";
+export type LeavePeriodStatus = "OPEN" | "CLOSED";
+
+export interface LeaveType {
+  id: string;
+  name: string;
+  code: string;
+  description: string | null;
+  isPaid: boolean;
+  requiresApproval: boolean;
+  requiresAttachment: boolean;
+  allowHalfDay: boolean;
+  allowPastDates: boolean;
+  allowFutureDates: boolean;
+  requiresBalance: boolean;
+  status: MasterStatus;
+  policyCount: number;
+  requestCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LeavePolicy {
+  id: string;
+  name: string;
+  code: string;
+  description: string | null;
+  leaveTypeId: string;
+  leaveType: { id: string; name: string; code: string };
+  entitlementAmount: number;
+  entitlementUnit: LeaveDurationUnit;
+  accrualMethod: LeaveAccrualMethod;
+  accrualFrequency: LeaveAccrualFrequency;
+  accrualStartRule: LeaveAccrualStartRule;
+  eligibilityMonths: number;
+  maxBalance: number | null;
+  carryOverEnabled: boolean;
+  maxCarryOverAmount: number | null;
+  carryOverExpirationMonths: number | null;
+  minRequestDuration: number | null;
+  maxRequestDuration: number | null;
+  minAdvanceNoticeDays: number;
+  allowNegativeBalance: boolean;
+  allowHalfDay: boolean;
+  allowUnpaidLeave: boolean;
+  approvalMode: LeaveApprovalMode;
+  leaveYearStartMonth: number;
+  cancellationCutoffDays: number;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+  status: MasterStatus;
+  assignmentCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LeavePolicyAssignment {
+  id: string;
+  employeeId: string;
+  employee: { id: string; employeeNumber: string; fullName: string };
+  leaveType: { id: string; name: string; code: string };
+  policy: { id: string; name: string; code: string; entitlementAmount: number };
+  effectiveFrom: string;
+  effectiveTo: string | null;
+  status: MasterStatus;
+  notes: string | null;
+  createdBy: { id: string; name: string } | null;
+  createdAt: string;
+}
+
+export interface LeaveBalance {
+  employeeId: string;
+  employeeNumber: string;
+  employeeName: string;
+  leaveType: { id: string; name: string; code: string; isPaid: boolean };
+  periodStart: string;
+  periodEnd: string;
+  entitled: number;
+  used: number;
+  reserved: number;
+  available: number;
+  unit: LeaveDurationUnit;
+  policy: { id: string; name: string; code: string } | null;
+}
+
+export interface LeaveTransaction {
+  id: string;
+  employeeId: string;
+  employeeNumber: string;
+  employeeName: string;
+  leaveType: { id: string; name: string; code: string };
+  periodStart: string;
+  periodEnd: string;
+  type: LeaveTransactionType;
+  amount: number;
+  transactionDate: string;
+  expiresAt: string | null;
+  sourceType: string;
+  sourceRef: string;
+  description: string | null;
+  createdBy: { id: string; name: string } | null;
+  createdAt: string;
+}
+
+export interface LeaveRequestDay {
+  date: string;
+  duration: number;
+  halfDayPeriod: LeaveHalfDayPeriod | null;
+}
+
+export interface LeaveRequestApproval {
+  id: string;
+  stage: LeaveApprovalStage;
+  decision: "APPROVED" | "REJECTED";
+  actor: { id: string; name: string } | null;
+  actorName: string;
+  comment: string | null;
+  isOverride: boolean;
+  createdAt: string;
+}
+
+export interface LeaveAttachment {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  uploadedBy: { id: string; name: string } | null;
+  createdAt: string;
+}
+
+export interface LeaveRequest {
+  id: string;
+  employeeId: string;
+  employeeNumber: string;
+  employeeName: string;
+  leaveType: {
+    id: string;
+    name: string;
+    code: string;
+    isPaid: boolean;
+    requiresAttachment: boolean;
+    requiresApproval: boolean;
+    requiresBalance: boolean;
+  };
+  startDate: string;
+  endDate: string;
+  duration: number;
+  durationUnit: LeaveDurationUnit;
+  requestMode: LeaveRequestMode;
+  halfDayPeriod: LeaveHalfDayPeriod | null;
+  reason: string;
+  status: LeaveRequestStatus;
+  approvalStage: LeaveApprovalStage | null;
+  submittedAt: string | null;
+  reviewedBy: { id: string; name: string } | null;
+  reviewedAt: string | null;
+  reviewComments: string | null;
+  cancelledAt: string | null;
+  cancelledBy: { id: string; name: string } | null;
+  cancellationReason: string | null;
+  withdrawnAt: string | null;
+  days: LeaveRequestDay[];
+  approvals: LeaveRequestApproval[];
+  attachments: LeaveAttachment[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LeaveRequestPreviewDay {
+  date: string;
+  duration: number;
+  isWorkingDay: boolean;
+  halfDayPeriod: LeaveHalfDayPeriod | null;
+}
+
+export interface LeaveRequestPreview {
+  startDate: string;
+  endDate: string;
+  duration: number;
+  durationUnit: LeaveDurationUnit;
+  requestMode: LeaveRequestMode;
+  halfDayPeriod: LeaveHalfDayPeriod | null;
+  days: LeaveRequestPreviewDay[];
+  balance: LeaveBalance | null;
+  estimatedRemaining: number | null;
+  requiresAttachment: boolean;
+}
+
+export interface LeaveCalendarEntry {
+  id: string;
+  employeeId: string;
+  employeeNumber: string;
+  employeeName: string;
+  leaveType: { id: string; name: string; code: string };
+  startDate: string;
+  endDate: string;
+  duration: number;
+  status: LeaveRequestStatus;
+  requestMode: LeaveRequestMode;
+  halfDayPeriod: LeaveHalfDayPeriod | null;
+}
+
+export interface LeaveCalendar {
+  month: string;
+  entries: LeaveCalendarEntry[];
+}
+
+export interface LeaveDashboard {
+  date: string;
+  balances: LeaveBalance[];
+  pendingRequests: number;
+  approvedThisMonth: number;
+  upcoming: LeaveRequest[];
+  inboxCount: number;
+}
+
+export interface LeaveReportRow {
+  employeeId: string;
+  employeeNumber: string;
+  employeeName: string;
+  branch: string | null;
+  department: string | null;
+  leaveType: string;
+  entitled: number;
+  used: number;
+  reserved: number;
+  available: number;
+}
+
+export interface LeaveReportSummary {
+  from: string;
+  to: string;
+  requestCount: number;
+  approvedCount: number;
+  pendingCount: number;
+  rejectedCount: number;
+  totalDays: number;
+  rows: LeaveReportRow[];
 }

@@ -40,6 +40,46 @@ const NAV_ITEMS: NavItem[] = [
     permission: PERMISSIONS.EMPLOYEE_READ,
   },
   { to: "/attendance/holidays", label: "Holidays", permission: PERMISSIONS.HOLIDAY_READ },
+  {
+    to: "/leave",
+    label: "Leave",
+    anyPermission: [
+      PERMISSIONS.LEAVE_REQUEST_READ,
+      PERMISSIONS.LEAVE_REQUEST_READ_TEAM,
+      PERMISSIONS.LEAVE_REQUEST_READ_ALL,
+    ],
+  },
+  { to: "/leave/requests", label: "My leave", permission: PERMISSIONS.LEAVE_REQUEST_READ },
+  { to: "/leave/balances", label: "My leave balance", permission: PERMISSIONS.LEAVE_BALANCE_READ },
+  {
+    to: "/leave/team",
+    label: "Team leave",
+    anyPermission: [PERMISSIONS.LEAVE_REQUEST_READ_TEAM, PERMISSIONS.LEAVE_REQUEST_READ_ALL],
+  },
+  {
+    to: "/leave/approvals",
+    label: "Leave approvals",
+    permission: PERMISSIONS.LEAVE_REQUEST_APPROVE,
+  },
+  { to: "/leave/calendar", label: "Leave calendar", permission: PERMISSIONS.LEAVE_REQUEST_READ },
+  { to: "/leave/types", label: "Leave types", permission: PERMISSIONS.LEAVE_TYPE_READ },
+  { to: "/leave/policies", label: "Leave policies", permission: PERMISSIONS.LEAVE_POLICY_READ },
+  {
+    to: "/leave/assignments",
+    label: "Leave assignments",
+    permission: PERMISSIONS.LEAVE_POLICY_READ,
+  },
+  {
+    to: "/leave/balance-management",
+    label: "Leave balances",
+    permission: PERMISSIONS.LEAVE_BALANCE_READ_ALL,
+  },
+  {
+    to: "/leave/transactions",
+    label: "Leave transactions",
+    permission: PERMISSIONS.LEAVE_TRANSACTION_READ,
+  },
+  { to: "/leave/reports", label: "Leave reports", permission: PERMISSIONS.LEAVE_REPORT_READ },
   { to: "/employees/me", label: "My profile", permission: PERMISSIONS.EMPLOYEE_READ_SELF },
   {
     to: "/employees",
@@ -77,13 +117,14 @@ export function AppShell() {
   const { mode, toggle } = useThemeStore();
   const { setMode } = useTheme();
   const items = NAV_ITEMS.filter((item) => {
-    if (item.anyPermission) return item.anyPermission.some((permission) => hasPermission(permission));
+    if (item.anyPermission)
+      return item.anyPermission.some((permission) => hasPermission(permission));
     return !item.permission || hasPermission(item.permission);
   });
 
   return (
     <div className="min-h-screen md:flex">
-      <aside className="w-full shrink-0 border-b border-[var(--nemo-neutral-200)] bg-[var(--nemo-neutral-0)] md:min-h-screen md:w-64 md:border-r md:border-b-0">
+      <aside className="w-full shrink-0 border-b border-[var(--nemo-neutral-200)] bg-[var(--nemo-neutral-0)] md:sticky md:top-0 md:flex md:h-screen md:w-64 md:flex-col md:overflow-hidden md:border-r md:border-b-0">
         <div className="px-5 py-5">
           <Typography variant="h5" as="p">
             PeopleOps
@@ -93,26 +134,38 @@ export function AppShell() {
           </Typography>
         </div>
         <Divider />
-        <nav className="flex gap-1 overflow-x-auto px-3 py-3 md:flex-col" aria-label="Main">
+        <nav
+          className="flex gap-1 overflow-x-auto px-3 py-3 md:min-h-0 md:flex-1 md:flex-col md:overflow-y-auto"
+          aria-label="Main"
+        >
           {items.map((item) => (
-            <NavLink key={item.to} to={item.to} end={item.to === "/"} className={navClassName}>
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.to === "/" || item.to === "/leave"}
+              className={navClassName}
+            >
               {item.label}
             </NavLink>
           ))}
         </nav>
-        <div className="hidden px-5 py-4 md:block">
+        <div className="hidden shrink-0 border-t border-[var(--nemo-neutral-200)] px-5 py-4 md:block">
           <Typography variant="caption" color="neutral">
             Signed in as
           </Typography>
-          <Typography variant="bodySmall">{user?.name}</Typography>
-          <Typography variant="caption" color="neutral">
-            {user?.email}
-          </Typography>
+          <div className="mt-1 min-w-0">
+            <Typography variant="bodySmall" className="block truncate">
+              {user?.name}
+            </Typography>
+            <Typography variant="caption" color="neutral" className="block truncate">
+              {user?.email}
+            </Typography>
+          </div>
         </div>
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--nemo-neutral-200)] bg-[var(--nemo-neutral-0)] px-5 py-3">
+        <header className="sticky top-0 z-20 flex flex-wrap items-center justify-between gap-3 border-b border-[var(--nemo-neutral-200)] bg-[var(--nemo-neutral-0)] px-5 py-3">
           <Stack direction="row" spacing={8} align="center" wrap>
             {user?.roles.map((role) => (
               <Badge key={role.id} variant="outlined" color="primary">

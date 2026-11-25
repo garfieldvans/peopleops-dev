@@ -43,6 +43,7 @@ const dashboard: AttendanceDashboard = {
     scheduledEndLocal: "2026-11-23T17:00:00",
   },
   holiday: null,
+  leave: null,
   record: null,
   pendingCorrections: 0,
 };
@@ -54,6 +55,7 @@ const overview: AttendanceOverview = {
   present: 3,
   late: 1,
   absent: 0,
+  onLeave: 0,
   incomplete: 0,
   pendingCorrections: 2,
 };

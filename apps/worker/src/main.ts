@@ -2,8 +2,9 @@ import "reflect-metadata";
 import { Logger } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { config } from "dotenv";
-import { createPrismaClient } from "@peopleops/database";
+import type { PrismaClient } from "@peopleops/database";
 import { serverEnvSchema } from "@peopleops/validators";
+import { PRISMA_CLIENT } from "./prisma.provider";
 import { WorkerModule } from "./worker.module";
 
 async function bootstrap(): Promise<void> {
@@ -22,8 +23,11 @@ async function bootstrap(): Promise<void> {
   }
 
   const env = parsedEnv.data;
-  const app = await NestFactory.createApplicationContext(WorkerModule);
-  const prisma = createPrismaClient({ connectionString: env.DATABASE_URL });
+  const app = await NestFactory.createApplicationContext(WorkerModule, {
+    logger: ["error", "warn", "log"],
+  });
+  app.enableShutdownHooks();
+  const prisma = app.get<PrismaClient>(PRISMA_CLIENT);
 
   try {
     await prisma.$queryRaw`SELECT 1`;
@@ -41,9 +45,8 @@ async function bootstrap(): Promise<void> {
     return;
   }
 
-  await prisma.$disconnect();
-  await app.close();
-  logger.log("No jobs are registered in Phase 1 — worker finished.");
+  await app.init();
+  logger.log("Worker started. Leave jobs run daily at 01:00 Asia/Jakarta.");
 }
 
 bootstrap().catch((error: unknown) => {

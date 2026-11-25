@@ -5,7 +5,8 @@ clock-in/out, unpaid breaks, company-timezone work dates, centralized calculatio
 history/calendar, manual corrections, correction requests, holidays, HR/self dashboards, CSV export,
 and audit logging.
 
-Out of scope: leave, overtime, payroll, a generic approval engine, GPS or selfie verification.
+Out of scope: overtime, payroll, a generic approval engine, GPS or selfie verification. Approved
+leave is integrated from Phase 5; see `docs/modules/leave.md` for the contract.
 
 ## Timezone and work date
 
@@ -27,13 +28,13 @@ cover Jakarta offsets, local midnight, overnight end dates and DST offsets in an
 `calculateAttendance` in
 `apps/api/src/modules/attendance/attendance-calculation.ts` is the single calculation entry point.
 
-| Value | Rule |
-| --- | --- |
-| `lateMinutes` | Minutes after `scheduledStart + graceLateMinutes`; whole minutes only. |
-| `earlyLeaveMinutes` | Minutes before `scheduledEnd - graceEarlyMinutes`; whole minutes only. |
-| `workedMinutes` | Elapsed clock-in → clock-out minus `max(expectedBreakMinutes, recordedBreakMinutes)`, clamped at 0. |
-| `breakMinutesTaken` | Recorded breaks clipped to the clock-in/out window. |
-| `status` | `INCOMPLETE` when one side is missing; `ABSENT` only when both are missing; otherwise `LATE_AND_EARLY_LEAVE`, `LATE`, `EARLY_LEAVE`, `HALF_DAY` (worked less than half the schedule with no late/early flag), or `PRESENT`. |
+| Value               | Rule                                                                                                                                                                                                                        |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `lateMinutes`       | Minutes after `scheduledStart + graceLateMinutes`; whole minutes only.                                                                                                                                                      |
+| `earlyLeaveMinutes` | Minutes before `scheduledEnd - graceEarlyMinutes`; whole minutes only.                                                                                                                                                      |
+| `workedMinutes`     | Elapsed clock-in → clock-out minus `max(expectedBreakMinutes, recordedBreakMinutes)`, clamped at 0.                                                                                                                         |
+| `breakMinutesTaken` | Recorded breaks clipped to the clock-in/out window.                                                                                                                                                                         |
+| `status`            | `INCOMPLETE` when one side is missing; `ABSENT` only when both are missing; otherwise `LATE_AND_EARLY_LEAVE`, `LATE`, `EARLY_LEAVE`, `HALF_DAY` (worked less than half the schedule with no late/early flag), or `PRESENT`. |
 
 The API does not manufacture `ABSENT` rows for employees who never clock in. The HR overview derives
 absence for past dates from scheduled employees without a record and without a holiday.
@@ -91,43 +92,50 @@ still be recorded on a holiday.
 
 ## Read scope
 
-| Caller | Records | Overview | Export | Corrections |
-| --- | --- | --- | --- | --- |
-| `attendance.read_all` | All | Yes | With `attendance.export` | All (with review permission) |
-| `attendance.read_team` | Own reporting subtree | No | No | Subtree |
-| `attendance.read` only | Own linked employee | No | No | Own |
-| No linked employee | Empty self list / `404 EMPLOYEE_NOT_LINKED` on self endpoints | — | — | — |
+| Caller                 | Records                                                       | Overview | Export                   | Corrections                  |
+| ---------------------- | ------------------------------------------------------------- | -------- | ------------------------ | ---------------------------- |
+| `attendance.read_all`  | All                                                           | Yes      | With `attendance.export` | All (with review permission) |
+| `attendance.read_team` | Own reporting subtree                                         | No       | No                       | Subtree                      |
+| `attendance.read` only | Own linked employee                                           | No       | No                       | Own                          |
+| No linked employee     | Empty self list / `404 EMPLOYEE_NOT_LINKED` on self endpoints | —        | —                        | —                            |
 
 Out-of-scope detail requests return `403 ATTENDANCE_OUT_OF_SCOPE`.
 
+## Approved leave integration
+
+Approved leave from `LeaveIntegrationService` is read-only here. A day covered by approved leave is
+returned as `ON_LEAVE` (with leave metadata) unless an existing attendance record exists, in which
+case the record status and clock data are preserved. Approved leave is excluded from derived absence.
+Half-day leave metadata is returned, but partial-day attendance recalculation is not implemented.
+
 ## API surface
 
-| Method | Path | Permission |
-| --- | --- | --- |
-| GET | `/work-schedules`, `/work-schedules/:id` | `work_schedule.read` |
-| POST / PATCH / PATCH deactivate | `/work-schedules` | `work_schedule.create/update/deactivate` |
-| GET | `/shifts`, `/shifts/:id` | `shift.read` |
-| POST / PATCH / PATCH deactivate | `/shifts` | `shift.create/update/deactivate` |
-| GET | `/employee-schedules` | `employee.read` (scope applied) |
-| GET / POST | `/employees/:id/schedules` | `work_schedule.read` / `work_schedule.update` |
-| POST | `/employee-schedules/bulk` | `work_schedule.update` |
-| PATCH | `/employee-schedules/:id` | `work_schedule.update` |
-| GET | `/holidays`, `/holidays/:id` | `holiday.read` |
-| POST / PATCH / PATCH deactivate | `/holidays` | `holiday.create/update/deactivate` |
-| GET | `/attendance` | `attendance.read` (scope applied) |
-| GET | `/attendance/me`, `/attendance/me/calendar` | `attendance.read` |
-| GET | `/attendance/employees/:id/records`, `/calendar` | `attendance.read` (scope applied) |
-| GET | `/attendance/dashboard` | `attendance.read` |
-| GET | `/attendance/overview` | `attendance.read_all` |
-| GET | `/attendance/export` | `attendance.export` |
-| POST | `/attendance/clock-in`, `/attendance/breaks/start` | `attendance.clock_in` |
-| POST | `/attendance/clock-out`, `/attendance/breaks/end` | `attendance.clock_out` |
-| GET | `/attendance/:id` | `attendance.read` (scope applied) |
-| PATCH | `/attendance/:id` | `attendance.manage` |
-| GET / POST | `/attendance/corrections` | `attendance_correction.read/create` |
-| GET | `/attendance/corrections/:id` | `attendance_correction.read` |
-| PATCH | `/attendance/corrections/:id/approve`, `/reject` | `attendance_correction.review` |
-| PATCH | `/attendance/corrections/:id/cancel` | `attendance_correction.create` (owner only) |
+| Method                          | Path                                               | Permission                                    |
+| ------------------------------- | -------------------------------------------------- | --------------------------------------------- |
+| GET                             | `/work-schedules`, `/work-schedules/:id`           | `work_schedule.read`                          |
+| POST / PATCH / PATCH deactivate | `/work-schedules`                                  | `work_schedule.create/update/deactivate`      |
+| GET                             | `/shifts`, `/shifts/:id`                           | `shift.read`                                  |
+| POST / PATCH / PATCH deactivate | `/shifts`                                          | `shift.create/update/deactivate`              |
+| GET                             | `/employee-schedules`                              | `employee.read` (scope applied)               |
+| GET / POST                      | `/employees/:id/schedules`                         | `work_schedule.read` / `work_schedule.update` |
+| POST                            | `/employee-schedules/bulk`                         | `work_schedule.update`                        |
+| PATCH                           | `/employee-schedules/:id`                          | `work_schedule.update`                        |
+| GET                             | `/holidays`, `/holidays/:id`                       | `holiday.read`                                |
+| POST / PATCH / PATCH deactivate | `/holidays`                                        | `holiday.create/update/deactivate`            |
+| GET                             | `/attendance`                                      | `attendance.read` (scope applied)             |
+| GET                             | `/attendance/me`, `/attendance/me/calendar`        | `attendance.read`                             |
+| GET                             | `/attendance/employees/:id/records`, `/calendar`   | `attendance.read` (scope applied)             |
+| GET                             | `/attendance/dashboard`                            | `attendance.read`                             |
+| GET                             | `/attendance/overview`                             | `attendance.read_all`                         |
+| GET                             | `/attendance/export`                               | `attendance.export`                           |
+| POST                            | `/attendance/clock-in`, `/attendance/breaks/start` | `attendance.clock_in`                         |
+| POST                            | `/attendance/clock-out`, `/attendance/breaks/end`  | `attendance.clock_out`                        |
+| GET                             | `/attendance/:id`                                  | `attendance.read` (scope applied)             |
+| PATCH                           | `/attendance/:id`                                  | `attendance.manage`                           |
+| GET / POST                      | `/attendance/corrections`                          | `attendance_correction.read/create`           |
+| GET                             | `/attendance/corrections/:id`                      | `attendance_correction.read`                  |
+| PATCH                           | `/attendance/corrections/:id/approve`, `/reject`   | `attendance_correction.review`                |
+| PATCH                           | `/attendance/corrections/:id/cancel`               | `attendance_correction.create` (owner only)   |
 
 CSV export uses a UTF-8 BOM, local scheduled/clock times and up to 5,000 records matching the list
 filters.

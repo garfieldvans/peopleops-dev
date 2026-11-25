@@ -16,6 +16,24 @@ async function main(): Promise<void> {
       where: { employeeNumber: { startsWith: "E2E-" } },
       data: { managerId: null },
     });
+
+    // Leave rows use Restrict on employees and ledger sources, so clear them
+    // explicitly before the employee fixtures are removed. This runs only on
+    // the isolated e2e database.
+    await prisma.leaveTransactionAllocation.deleteMany({});
+    await prisma.leaveTransaction.deleteMany({});
+    await prisma.leaveBalanceReservation.deleteMany({});
+    await prisma.leaveAttachment.deleteMany({});
+    await prisma.leaveRequestApproval.deleteMany({});
+    await prisma.leaveRequestDay.deleteMany({});
+    await prisma.leaveRequest.deleteMany({});
+    await prisma.leaveEntitlementPeriod.deleteMany({});
+    await prisma.leavePolicyAssignment.deleteMany({
+      where: { OR: [{ employee: { employeeNumber: { startsWith: "E2E-" } } }] },
+    });
+    await prisma.leavePolicy.deleteMany({ where: { code: { startsWith: "E2E-" } } });
+    await prisma.leaveType.deleteMany({ where: { code: { startsWith: "E2E_" } } });
+
     await prisma.employee.deleteMany({
       where: { employeeNumber: { startsWith: "E2E-" } },
     });

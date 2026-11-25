@@ -41,6 +41,7 @@ export function statusLabel(status: AttendanceDayStatus): string {
     ABSENT: "Absent",
     HALF_DAY: "Half day",
     INCOMPLETE: "Incomplete",
+    ON_LEAVE: "On leave",
     HOLIDAY: "Holiday",
     OFF: "Day off",
     NO_RECORD: "No record",
@@ -56,6 +57,7 @@ export function statusColor(
     return "warning";
   }
   if (status === "ABSENT" || status === "INCOMPLETE") return "error";
+  if (status === "ON_LEAVE") return "primary";
   if (status === "HOLIDAY") return "primary";
   if (status === "NO_RECORD") return "primary";
   return "neutral";
