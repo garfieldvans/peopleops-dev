@@ -637,6 +637,39 @@ export const PERMISSION_DEFINITIONS: readonly PermissionDefinition[] = [
     name: "Read payroll history",
     description: "View historical payroll runs and published results",
   },
+  { code: PERMISSIONS.ONBOARDING_READ, name: "Read onboarding", description: "View onboarding templates and records" },
+  { code: PERMISSIONS.ONBOARDING_MANAGE, name: "Manage onboarding", description: "Create templates and onboarding records" },
+  { code: PERMISSIONS.ONBOARDING_TASK_UPDATE, name: "Update onboarding tasks", description: "Update onboarding task progress" },
+  { code: PERMISSIONS.OFFBOARDING_READ, name: "Read offboarding", description: "View offboarding records and tasks" },
+  { code: PERMISSIONS.OFFBOARDING_MANAGE, name: "Manage offboarding", description: "Create and complete offboarding records" },
+  { code: PERMISSIONS.OFFBOARDING_TASK_UPDATE, name: "Update offboarding tasks", description: "Update offboarding task progress" },
+  { code: PERMISSIONS.OFFBOARDING_SENSITIVE_READ, name: "Read offboarding sensitive data", description: "View exit interview and access review notes" },
+  { code: PERMISSIONS.PERFORMANCE_CYCLES_READ, name: "Read performance cycles", description: "View performance cycles" },
+  { code: PERMISSIONS.PERFORMANCE_CYCLES_MANAGE, name: "Manage performance cycles", description: "Create and transition performance cycles" },
+  { code: PERMISSIONS.PERFORMANCE_GOALS_READ_SELF, name: "Read own goals", description: "View own performance goals" },
+  { code: PERMISSIONS.PERFORMANCE_GOALS_MANAGE, name: "Manage performance goals", description: "Create and update performance goals" },
+  { code: PERMISSIONS.PERFORMANCE_REVIEWS_READ_SELF, name: "Read own reviews", description: "View own performance reviews" },
+  { code: PERMISSIONS.PERFORMANCE_REVIEWS_READ_TEAM, name: "Read team reviews", description: "View reviews for the reporting tree" },
+  { code: PERMISSIONS.PERFORMANCE_REVIEWS_READ_ALL, name: "Read all reviews", description: "View all performance reviews" },
+  { code: PERMISSIONS.PERFORMANCE_REVIEWS_SUBMIT_SELF, name: "Submit self review", description: "Submit own self review" },
+  { code: PERMISSIONS.PERFORMANCE_REVIEWS_SUBMIT_MANAGER, name: "Submit manager review", description: "Submit manager reviews for the team" },
+  { code: PERMISSIONS.PERFORMANCE_REVIEWS_MANAGE, name: "Manage performance reviews", description: "Create and complete HR reviews" },
+  { code: PERMISSIONS.PERFORMANCE_REVIEWS_INTERNAL_NOTES_READ, name: "Read internal review notes", description: "View internal HR-only review notes" },
+  { code: PERMISSIONS.LEARNING_PROGRAMS_READ, name: "Read training programs", description: "View the training catalog" },
+  { code: PERMISSIONS.LEARNING_PROGRAMS_MANAGE, name: "Manage training programs", description: "Create and update training programs" },
+  { code: PERMISSIONS.LEARNING_ENROLLMENT_CREATE, name: "Request training enrollment", description: "Request enrollment in a training program" },
+  { code: PERMISSIONS.LEARNING_ENROLLMENT_READ_SELF, name: "Read own enrollments", description: "View own training enrollments and certificates" },
+  { code: PERMISSIONS.LEARNING_ENROLLMENT_READ_ALL, name: "Read all enrollments", description: "View all training enrollments" },
+  { code: PERMISSIONS.LEARNING_ENROLLMENT_MANAGE, name: "Manage training enrollments", description: "Approve, reject, and complete enrollments" },
+  { code: PERMISSIONS.LEARNING_CERTIFICATES_READ_SELF, name: "Read own certificates", description: "View own training certificates" },
+  { code: PERMISSIONS.LEARNING_CERTIFICATES_MANAGE, name: "Manage certificates", description: "Upload and manage training certificates" },
+  { code: PERMISSIONS.REPORTS_HR_READ, name: "Read HR dashboard", description: "View the company HR overview dashboard" },
+  { code: PERMISSIONS.REPORTS_EMPLOYEE_READ, name: "Read employee reports", description: "View employee reports" },
+  { code: PERMISSIONS.REPORTS_ATTENDANCE_READ, name: "Read attendance reports", description: "View attendance and absence reports" },
+  { code: PERMISSIONS.REPORTS_LEAVE_READ, name: "Read leave reports", description: "View leave utilization reports" },
+  { code: PERMISSIONS.REPORTS_OVERTIME_READ, name: "Read overtime reports", description: "View verified overtime reports" },
+  { code: PERMISSIONS.REPORTS_PAYROLL_READ, name: "Read payroll reports", description: "View published payroll aggregate reports" },
+  { code: PERMISSIONS.REPORTS_EXPORT, name: "Export reports", description: "Export report data as CSV" },
 ];
 
 const ALL_PERMISSIONS = PERMISSION_DEFINITIONS.map((permission) => permission.code);
@@ -814,6 +847,102 @@ const PAYROLL_OFFICER = [
   ...PAYROLL_EMPLOYEE,
 ] as const;
 
+const ONBOARDING_HR = [
+  PERMISSIONS.ONBOARDING_READ,
+  PERMISSIONS.ONBOARDING_MANAGE,
+  PERMISSIONS.ONBOARDING_TASK_UPDATE,
+  PERMISSIONS.OFFBOARDING_READ,
+  PERMISSIONS.OFFBOARDING_MANAGE,
+  PERMISSIONS.OFFBOARDING_TASK_UPDATE,
+  PERMISSIONS.OFFBOARDING_SENSITIVE_READ,
+] as const;
+
+const ONBOARDING_SELF = [
+  PERMISSIONS.ONBOARDING_READ,
+  PERMISSIONS.ONBOARDING_TASK_UPDATE,
+  PERMISSIONS.OFFBOARDING_READ,
+] as const;
+
+const PERFORMANCE_HR = [
+  PERMISSIONS.PERFORMANCE_CYCLES_READ,
+  PERMISSIONS.PERFORMANCE_CYCLES_MANAGE,
+  PERMISSIONS.PERFORMANCE_GOALS_READ_SELF,
+  PERMISSIONS.PERFORMANCE_GOALS_MANAGE,
+  PERMISSIONS.PERFORMANCE_REVIEWS_READ_SELF,
+  PERMISSIONS.PERFORMANCE_REVIEWS_READ_ALL,
+  PERMISSIONS.PERFORMANCE_REVIEWS_SUBMIT_SELF,
+  PERMISSIONS.PERFORMANCE_REVIEWS_SUBMIT_MANAGER,
+  PERMISSIONS.PERFORMANCE_REVIEWS_MANAGE,
+  PERMISSIONS.PERFORMANCE_REVIEWS_INTERNAL_NOTES_READ,
+] as const;
+
+const PERFORMANCE_MANAGER = [
+  PERMISSIONS.PERFORMANCE_CYCLES_READ,
+  PERMISSIONS.PERFORMANCE_GOALS_READ_SELF,
+  PERMISSIONS.PERFORMANCE_GOALS_MANAGE,
+  PERMISSIONS.PERFORMANCE_REVIEWS_READ_SELF,
+  PERMISSIONS.PERFORMANCE_REVIEWS_READ_TEAM,
+  PERMISSIONS.PERFORMANCE_REVIEWS_SUBMIT_SELF,
+  PERMISSIONS.PERFORMANCE_REVIEWS_SUBMIT_MANAGER,
+] as const;
+
+const PERFORMANCE_SELF = [
+  PERMISSIONS.PERFORMANCE_CYCLES_READ,
+  PERMISSIONS.PERFORMANCE_GOALS_READ_SELF,
+  PERMISSIONS.PERFORMANCE_REVIEWS_READ_SELF,
+  PERMISSIONS.PERFORMANCE_REVIEWS_SUBMIT_SELF,
+] as const;
+
+const LEARNING_HR = [
+  PERMISSIONS.LEARNING_PROGRAMS_READ,
+  PERMISSIONS.LEARNING_PROGRAMS_MANAGE,
+  PERMISSIONS.LEARNING_ENROLLMENT_CREATE,
+  PERMISSIONS.LEARNING_ENROLLMENT_READ_SELF,
+  PERMISSIONS.LEARNING_ENROLLMENT_READ_ALL,
+  PERMISSIONS.LEARNING_ENROLLMENT_MANAGE,
+  PERMISSIONS.LEARNING_CERTIFICATES_READ_SELF,
+  PERMISSIONS.LEARNING_CERTIFICATES_MANAGE,
+] as const;
+
+const LEARNING_MANAGER = [
+  PERMISSIONS.LEARNING_PROGRAMS_READ,
+  PERMISSIONS.LEARNING_ENROLLMENT_CREATE,
+  PERMISSIONS.LEARNING_ENROLLMENT_READ_SELF,
+  PERMISSIONS.LEARNING_ENROLLMENT_READ_ALL,
+  PERMISSIONS.LEARNING_ENROLLMENT_MANAGE,
+  PERMISSIONS.LEARNING_CERTIFICATES_READ_SELF,
+] as const;
+
+const LEARNING_SELF = [
+  PERMISSIONS.LEARNING_PROGRAMS_READ,
+  PERMISSIONS.LEARNING_ENROLLMENT_CREATE,
+  PERMISSIONS.LEARNING_ENROLLMENT_READ_SELF,
+  PERMISSIONS.LEARNING_CERTIFICATES_READ_SELF,
+] as const;
+
+const REPORTS_HR = [
+  PERMISSIONS.REPORTS_HR_READ,
+  PERMISSIONS.REPORTS_EMPLOYEE_READ,
+  PERMISSIONS.REPORTS_ATTENDANCE_READ,
+  PERMISSIONS.REPORTS_LEAVE_READ,
+  PERMISSIONS.REPORTS_OVERTIME_READ,
+  PERMISSIONS.REPORTS_PAYROLL_READ,
+  PERMISSIONS.REPORTS_EXPORT,
+] as const;
+
+const REPORTS_MANAGER = [
+  PERMISSIONS.REPORTS_EMPLOYEE_READ,
+  PERMISSIONS.REPORTS_ATTENDANCE_READ,
+  PERMISSIONS.REPORTS_LEAVE_READ,
+  PERMISSIONS.REPORTS_OVERTIME_READ,
+] as const;
+
+const REPORTS_PAYROLL = [
+  PERMISSIONS.REPORTS_OVERTIME_READ,
+  PERMISSIONS.REPORTS_PAYROLL_READ,
+  PERMISSIONS.REPORTS_EXPORT,
+] as const;
+
 export interface RoleDefinition {
   code: RoleCode;
   name: string;
@@ -842,6 +971,10 @@ export const ROLE_DEFINITIONS: readonly RoleDefinition[] = [
       ...OVERTIME_SELF,
       ...OVERTIME_ADMIN,
       ...PAYROLL_HR,
+      ...ONBOARDING_HR,
+      ...PERFORMANCE_HR,
+      ...LEARNING_HR,
+      ...REPORTS_HR,
       PERMISSIONS.USER_READ,
       PERMISSIONS.USER_CREATE,
       PERMISSIONS.USER_UPDATE,
@@ -886,6 +1019,10 @@ export const ROLE_DEFINITIONS: readonly RoleDefinition[] = [
       ...LEAVE_TEAM,
       ...OVERTIME_SELF,
       ...OVERTIME_TEAM,
+      ...ONBOARDING_SELF,
+      ...PERFORMANCE_MANAGER,
+      ...LEARNING_MANAGER,
+      ...REPORTS_MANAGER,
       PERMISSIONS.OVERTIME_POLICY_READ,
       ...ORGANIZATION_READ,
       PERMISSIONS.EMPLOYEE_READ_TEAM,
@@ -908,6 +1045,8 @@ export const ROLE_DEFINITIONS: readonly RoleDefinition[] = [
       ...LEAVE_SELF,
       ...OVERTIME_SELF,
       ...PAYROLL_OFFICER,
+      ...REPORTS_PAYROLL,
+      PERMISSIONS.LEARNING_PROGRAMS_READ,
       PERMISSIONS.OVERTIME_READ_ALL,
       PERMISSIONS.OVERTIME_EXPORT,
       PERMISSIONS.OVERTIME_POLICY_READ,
@@ -928,6 +1067,9 @@ export const ROLE_DEFINITIONS: readonly RoleDefinition[] = [
       ...LEAVE_SELF,
       ...OVERTIME_SELF,
       ...PAYROLL_EMPLOYEE,
+      ...ONBOARDING_SELF,
+      ...PERFORMANCE_SELF,
+      ...LEARNING_SELF,
       PERMISSIONS.WORK_SCHEDULE_READ,
       PERMISSIONS.SHIFT_READ,
       PERMISSIONS.HOLIDAY_READ,

@@ -62,6 +62,18 @@ model User {
   payrollRunApprovals         PayrollRunApproval[]         @relation("PayrollRunApprovalActor")
   payrollAdjustmentsCreated   PayrollAdjustment[]          @relation("PayrollAdjustmentCreator")
   payrollAdjustmentsReviewed  PayrollAdjustment[]          @relation("PayrollAdjustmentReviewer")
+  onboardingsCreated          EmployeeOnboarding[]         @relation("OnboardingCreator")
+  onboardingTasksAssigned     OnboardingTask[]             @relation("OnboardingTaskAssignee")
+  offboardingsInitiated       EmployeeOffboarding[]        @relation("OffboardingInitiator")
+  offboardingTasksAssigned    OffboardingTask[]            @relation("OffboardingTaskAssignee")
+  performanceCyclesCreated    PerformanceCycle[]           @relation("PerformanceCycleCreator")
+  performanceGoalsCreated     PerformanceGoal[]            @relation("PerformanceGoalCreator")
+  performanceGoalUpdates      PerformanceGoalUpdate[]      @relation("PerformanceGoalUpdateActor")
+  performanceReviewsCreated   PerformanceReview[]          @relation("PerformanceReviewCreator")
+  performanceReviewsReviewed  PerformanceReview[]          @relation("PerformanceReviewReviewer")
+  trainingProgramsCreated     TrainingProgram[]            @relation("TrainingProgramCreator")
+  trainingEnrollmentsApproved TrainingEnrollment[]         @relation("TrainingEnrollmentApprover")
+  trainingDocumentsUploaded   TrainingDocument[]           @relation("TrainingDocumentUploader")
 
   @@map("users")
 }
@@ -391,6 +403,12 @@ model Employee {
   payrollAssignments    EmployeePayrollAssignment[]
   payrollPayslips       PayrollPayslip[]
   payrollAdjustments    PayrollAdjustment[]
+  onboardings           EmployeeOnboarding[]
+  offboardings          EmployeeOffboarding[]
+  performanceGoals      PerformanceGoal[]
+  performanceReviews    PerformanceReview[]
+  trainingEnrollments   TrainingEnrollment[]
+  trainingDocuments     TrainingDocument[]
 
   @@index([lastName, firstName])
   @@index([branchId])
@@ -1614,4 +1632,504 @@ model PayrollAdjustment {
   @@index([periodId, status])
   @@index([employeeId, periodId])
   @@map("payroll_adjustments")
+}
+
+// ---------------------------------------------------------------------------
+// Phase 8 — Onboarding and offboarding
+// ---------------------------------------------------------------------------
+
+enum OnboardingStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum OnboardingTaskCategory {
+  DOCUMENTATION
+  HR_ADMINISTRATION
+  IT_SETUP
+  EQUIPMENT
+  ORIENTATION
+  DEPARTMENT_INTRODUCTION
+  OTHER
+}
+
+enum OffboardingStatus {
+  INITIATED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum OffboardingReasonCategory {
+  RESIGNATION
+  CONTRACT_END
+  TERMINATION
+  RETIREMENT
+  OTHER
+}
+
+enum OffboardingTaskCategory {
+  HR_ADMINISTRATION
+  DOCUMENTATION
+  KNOWLEDGE_TRANSFER
+  EQUIPMENT_RETURN
+  ACCESS_REVIEW
+  PAYROLL_REVIEW
+  EXIT_INTERVIEW
+  OTHER
+}
+
+model OnboardingTemplate {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String
+  description String?
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tasks   OnboardingTaskTemplate[]
+  records EmployeeOnboarding[]
+
+  @@index([isActive])
+  @@map("onboarding_templates")
+}
+
+model OnboardingTaskTemplate {
+  id            String                 @id @default(uuid()) @db.Uuid
+  templateId    String                 @map("template_id") @db.Uuid
+  title         String
+  description   String?
+  category      OnboardingTaskCategory @default(OTHER)
+  assignedRole  String?                @map("assigned_role")
+  dueOffsetDays Int                    @default(0) @map("due_offset_days")
+  isRequired    Boolean                @default(true) @map("is_required")
+  sortOrder     Int                    @default(0) @map("sort_order")
+  createdAt     DateTime               @default(now()) @map("created_at")
+
+  template OnboardingTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@unique([templateId, sortOrder])
+  @@index([templateId])
+  @@map("onboarding_task_templates")
+}
+
+model EmployeeOnboarding {
+  id                     String           @id @default(uuid()) @db.Uuid
+  employeeId             String           @map("employee_id") @db.Uuid
+  templateId             String           @map("template_id") @db.Uuid
+  startDate              DateTime         @map("start_date") @db.Date
+  expectedCompletionDate DateTime?        @map("expected_completion_date") @db.Date
+  completedAt            DateTime?        @map("completed_at")
+  status                 OnboardingStatus @default(NOT_STARTED)
+  notes                  String?
+  createdById            String?          @map("created_by_id") @db.Uuid
+  createdAt              DateTime         @default(now()) @map("created_at")
+  updatedAt              DateTime         @updatedAt @map("updated_at")
+
+  employee  Employee           @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  template  OnboardingTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  createdBy User?              @relation("OnboardingCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  tasks     OnboardingTask[]
+
+  @@unique([employeeId, startDate])
+  @@index([employeeId, status])
+  @@index([status, expectedCompletionDate])
+  @@map("employee_onboardings")
+}
+
+model OnboardingTask {
+  id           String                 @id @default(uuid()) @db.Uuid
+  onboardingId String                 @map("onboarding_id") @db.Uuid
+  title        String
+  description  String?
+  category     OnboardingTaskCategory @default(OTHER)
+  assignedToId String?                @map("assigned_to_id") @db.Uuid
+  dueDate      DateTime?              @map("due_date") @db.Date
+  completedAt  DateTime?              @map("completed_at")
+  status       TaskStatus             @default(PENDING)
+  notes        String?
+  isRequired   Boolean                @default(true) @map("is_required")
+  sortOrder    Int                    @default(0) @map("sort_order")
+  createdAt    DateTime               @default(now()) @map("created_at")
+  updatedAt    DateTime               @updatedAt @map("updated_at")
+
+  onboarding EmployeeOnboarding @relation(fields: [onboardingId], references: [id], onDelete: Cascade)
+  assignedTo User?              @relation("OnboardingTaskAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  @@index([onboardingId, status])
+  @@index([assignedToId, dueDate])
+  @@map("onboarding_tasks")
+}
+
+model OffboardingTemplate {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String
+  description String?
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tasks   OffboardingTaskTemplate[]
+  records EmployeeOffboarding[]
+
+  @@index([isActive])
+  @@map("offboarding_templates")
+}
+
+model OffboardingTaskTemplate {
+  id            String                  @id @default(uuid()) @db.Uuid
+  templateId    String                  @map("template_id") @db.Uuid
+  title         String
+  description   String?
+  category      OffboardingTaskCategory @default(OTHER)
+  assignedRole  String?                 @map("assigned_role")
+  dueOffsetDays Int                     @default(0) @map("due_offset_days")
+  isRequired    Boolean                 @default(true) @map("is_required")
+  sortOrder     Int                     @default(0) @map("sort_order")
+  createdAt     DateTime                @default(now()) @map("created_at")
+
+  template OffboardingTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@unique([templateId, sortOrder])
+  @@index([templateId])
+  @@map("offboarding_task_templates")
+}
+
+model EmployeeOffboarding {
+  id                   String                    @id @default(uuid()) @db.Uuid
+  employeeId           String                    @map("employee_id") @db.Uuid
+  templateId           String?                   @map("template_id") @db.Uuid
+  resignationDate      DateTime                  @map("resignation_date") @db.Date
+  lastWorkingDate      DateTime                  @map("last_working_date") @db.Date
+  reasonCategory       OffboardingReasonCategory @default(RESIGNATION) @map("reason_category")
+  reason               String?
+  status               OffboardingStatus         @default(INITIATED)
+  initiatedById        String?                   @map("initiated_by_id") @db.Uuid
+  completedAt          DateTime?                 @map("completed_at")
+  exitInterviewNotes   String?                   @map("exit_interview_notes")
+  equipmentReturnNotes String?                   @map("equipment_return_notes")
+  accessReviewNotes    String?                   @map("access_review_notes")
+  createdAt            DateTime                  @default(now()) @map("created_at")
+  updatedAt            DateTime                  @updatedAt @map("updated_at")
+
+  employee    Employee             @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  template    OffboardingTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  initiatedBy User?                @relation("OffboardingInitiator", fields: [initiatedById], references: [id], onDelete: SetNull)
+  tasks       OffboardingTask[]
+
+  @@index([employeeId, status])
+  @@index([status, lastWorkingDate])
+  @@map("employee_offboardings")
+}
+
+model OffboardingTask {
+  id            String                  @id @default(uuid()) @db.Uuid
+  offboardingId String                  @map("offboarding_id") @db.Uuid
+  title         String
+  description   String?
+  category      OffboardingTaskCategory @default(OTHER)
+  assignedToId  String?                 @map("assigned_to_id") @db.Uuid
+  dueDate       DateTime?               @map("due_date") @db.Date
+  completedAt   DateTime?               @map("completed_at")
+  status        TaskStatus              @default(PENDING)
+  notes         String?
+  isRequired    Boolean                 @default(true) @map("is_required")
+  sortOrder     Int                     @default(0) @map("sort_order")
+  createdAt     DateTime                @default(now()) @map("created_at")
+  updatedAt     DateTime                @updatedAt @map("updated_at")
+
+  offboarding EmployeeOffboarding @relation(fields: [offboardingId], references: [id], onDelete: Cascade)
+  assignedTo  User?               @relation("OffboardingTaskAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  @@index([offboardingId, status])
+  @@index([assignedToId, dueDate])
+  @@map("offboarding_tasks")
+}
+
+// ---------------------------------------------------------------------------
+// Phase 8 — Performance management
+// ---------------------------------------------------------------------------
+
+enum PerformanceCycleStatus {
+  DRAFT
+  ACTIVE
+  REVIEW_IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum PerformanceGoalCategory {
+  BUSINESS
+  LEADERSHIP
+  DEVELOPMENT
+  BEHAVIORAL
+  OTHER
+}
+
+enum PerformanceMeasurementType {
+  NUMERIC
+  PERCENTAGE
+  BOOLEAN
+  QUALITATIVE
+}
+
+enum PerformanceGoalStatus {
+  DRAFT
+  ACTIVE
+  ACHIEVED
+  MISSED
+  CANCELLED
+}
+
+enum PerformanceReviewType {
+  SELF_REVIEW
+  MANAGER_REVIEW
+  HR_REVIEW
+}
+
+enum PerformanceReviewStatus {
+  DRAFT
+  SUBMITTED
+  COMPLETED
+}
+
+model PerformanceCycle {
+  id              String                 @id @default(uuid()) @db.Uuid
+  name            String
+  description     String?
+  startDate       DateTime               @map("start_date") @db.Date
+  endDate         DateTime               @map("end_date") @db.Date
+  reviewStartDate DateTime               @map("review_start_date") @db.Date
+  reviewEndDate   DateTime               @map("review_end_date") @db.Date
+  status          PerformanceCycleStatus @default(DRAFT)
+  createdById     String?                @map("created_by_id") @db.Uuid
+  createdAt       DateTime               @default(now()) @map("created_at")
+  updatedAt       DateTime               @updatedAt @map("updated_at")
+
+  createdBy User?               @relation("PerformanceCycleCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  goals     PerformanceGoal[]
+  reviews   PerformanceReview[]
+
+  @@index([status, startDate])
+  @@index([startDate, endDate])
+  @@map("performance_cycles")
+}
+
+model PerformanceGoal {
+  id              String                     @id @default(uuid()) @db.Uuid
+  employeeId      String                     @map("employee_id") @db.Uuid
+  cycleId         String                     @map("cycle_id") @db.Uuid
+  title           String
+  description     String?
+  category        PerformanceGoalCategory    @default(OTHER)
+  measurementType PerformanceMeasurementType @default(QUALITATIVE) @map("measurement_type")
+  targetValue     Decimal?                   @map("target_value") @db.Decimal(18, 2)
+  currentValue    Decimal?                   @map("current_value") @db.Decimal(18, 2)
+  weight          Decimal                    @db.Decimal(5, 2)
+  status          PerformanceGoalStatus      @default(DRAFT)
+  createdById     String?                    @map("created_by_id") @db.Uuid
+  createdAt       DateTime                   @default(now()) @map("created_at")
+  updatedAt       DateTime                   @updatedAt @map("updated_at")
+
+  employee  Employee                @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  cycle     PerformanceCycle        @relation(fields: [cycleId], references: [id], onDelete: Restrict)
+  createdBy User?                   @relation("PerformanceGoalCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  updates   PerformanceGoalUpdate[]
+  items     PerformanceReviewItem[]
+
+  @@index([employeeId, cycleId])
+  @@index([cycleId, status])
+  @@map("performance_goals")
+}
+
+model PerformanceGoalUpdate {
+  id            String   @id @default(uuid()) @db.Uuid
+  goalId        String   @map("goal_id") @db.Uuid
+  previousValue Decimal? @map("previous_value") @db.Decimal(18, 2)
+  newValue      Decimal? @map("new_value") @db.Decimal(18, 2)
+  comment       String?
+  updatedById   String?  @map("updated_by_id") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  goal      PerformanceGoal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  updatedBy User?           @relation("PerformanceGoalUpdateActor", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@index([goalId, createdAt])
+  @@map("performance_goal_updates")
+}
+
+model PerformanceReview {
+  id            String                  @id @default(uuid()) @db.Uuid
+  cycleId       String                  @map("cycle_id") @db.Uuid
+  employeeId    String                  @map("employee_id") @db.Uuid
+  reviewerId    String?                 @map("reviewer_id") @db.Uuid
+  reviewType    PerformanceReviewType   @map("review_type")
+  status        PerformanceReviewStatus @default(DRAFT)
+  overallRating Decimal?                @map("overall_rating") @db.Decimal(3, 1)
+  summary       String?
+  internalNotes String?                 @map("internal_notes")
+  submittedAt   DateTime?               @map("submitted_at")
+  completedAt   DateTime?               @map("completed_at")
+  createdById   String?                 @map("created_by_id") @db.Uuid
+  createdAt     DateTime                @default(now()) @map("created_at")
+  updatedAt     DateTime                @updatedAt @map("updated_at")
+
+  cycle     PerformanceCycle        @relation(fields: [cycleId], references: [id], onDelete: Restrict)
+  employee  Employee                @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  reviewer  User?                   @relation("PerformanceReviewReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+  createdBy User?                   @relation("PerformanceReviewCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  items     PerformanceReviewItem[]
+
+  @@unique([cycleId, employeeId, reviewType])
+  @@index([cycleId, status])
+  @@index([employeeId, createdAt])
+  @@map("performance_reviews")
+}
+
+model PerformanceReviewItem {
+  id       String   @id @default(uuid()) @db.Uuid
+  reviewId String   @map("review_id") @db.Uuid
+  goalId   String?  @map("goal_id") @db.Uuid
+  rating   Decimal? @db.Decimal(3, 1)
+  comments String?
+  evidence String?
+
+  review PerformanceReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  goal   PerformanceGoal?  @relation(fields: [goalId], references: [id], onDelete: SetNull)
+
+  @@index([reviewId])
+  @@index([goalId])
+  @@map("performance_review_items")
+}
+
+// ---------------------------------------------------------------------------
+// Phase 8 — Learning and development
+// ---------------------------------------------------------------------------
+
+enum TrainingType {
+  INTERNAL
+  EXTERNAL
+  ONLINE
+  WORKSHOP
+  SEMINAR
+  CERTIFICATION
+  OTHER
+}
+
+enum TrainingDeliveryMethod {
+  IN_PERSON
+  ONLINE
+  HYBRID
+}
+
+enum TrainingProgramStatus {
+  DRAFT
+  PUBLISHED
+  ONGOING
+  COMPLETED
+  CANCELLED
+}
+
+enum TrainingEnrollmentStatus {
+  REQUESTED
+  APPROVED
+  REJECTED
+  ENROLLED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  FAILED
+}
+
+enum TrainingDocumentKind {
+  MATERIAL
+  CERTIFICATE
+  OTHER
+}
+
+model TrainingProgram {
+  id                   String                 @id @default(uuid()) @db.Uuid
+  title                String
+  description          String?
+  category             String?
+  trainingType         TrainingType           @default(INTERNAL) @map("training_type")
+  provider             String?
+  durationMinutes      Int?                   @map("duration_minutes")
+  deliveryMethod       TrainingDeliveryMethod @default(IN_PERSON) @map("delivery_method")
+  location             String?
+  registrationDeadline DateTime?              @map("registration_deadline") @db.Date
+  startDate            DateTime               @map("start_date") @db.Date
+  endDate              DateTime               @map("end_date") @db.Date
+  capacity             Int?
+  status               TrainingProgramStatus  @default(DRAFT)
+  createdById          String?                @map("created_by_id") @db.Uuid
+  createdAt            DateTime               @default(now()) @map("created_at")
+  updatedAt            DateTime               @updatedAt @map("updated_at")
+
+  createdBy   User?                @relation("TrainingProgramCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  enrollments TrainingEnrollment[]
+  documents   TrainingDocument[]
+
+  @@index([status, startDate])
+  @@index([registrationDeadline])
+  @@map("training_programs")
+}
+
+model TrainingEnrollment {
+  id           String                   @id @default(uuid()) @db.Uuid
+  programId    String                   @map("program_id") @db.Uuid
+  employeeId   String                   @map("employee_id") @db.Uuid
+  status       TrainingEnrollmentStatus @default(REQUESTED)
+  enrolledAt   DateTime?                @map("enrolled_at")
+  approvedById String?                  @map("approved_by_id") @db.Uuid
+  completedAt  DateTime?                @map("completed_at")
+  result       String?
+  feedback     String?
+  createdAt    DateTime                 @default(now()) @map("created_at")
+  updatedAt    DateTime                 @updatedAt @map("updated_at")
+
+  program    TrainingProgram    @relation(fields: [programId], references: [id], onDelete: Restrict)
+  employee   Employee           @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  approvedBy User?              @relation("TrainingEnrollmentApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+  documents  TrainingDocument[]
+
+  @@unique([programId, employeeId])
+  @@index([employeeId, status])
+  @@index([programId, status])
+  @@map("training_enrollments")
+}
+
+model TrainingDocument {
+  id           String               @id @default(uuid()) @db.Uuid
+  programId    String               @map("program_id") @db.Uuid
+  enrollmentId String?              @map("enrollment_id") @db.Uuid
+  employeeId   String?              @map("employee_id") @db.Uuid
+  kind         TrainingDocumentKind @default(MATERIAL)
+  title        String
+  fileName     String               @map("file_name")
+  mimeType     String               @map("mime_type")
+  sizeBytes    Int                  @map("size_bytes")
+  storageKey   String               @unique @map("storage_key")
+  issuedAt     DateTime?            @map("issued_at") @db.Date
+  expiresAt    DateTime?            @map("expires_at") @db.Date
+  uploadedById String?              @map("uploaded_by_id") @db.Uuid
+  createdAt    DateTime             @default(now()) @map("created_at")
+
+  program    TrainingProgram     @relation(fields: [programId], references: [id], onDelete: Cascade)
+  enrollment TrainingEnrollment? @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  employee   Employee?           @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  uploadedBy User?               @relation("TrainingDocumentUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  @@index([programId, kind])
+  @@index([employeeId, kind])
+  @@index([enrollmentId])
+  @@map("training_documents")
 }

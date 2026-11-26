@@ -5,7 +5,11 @@ import { AuthModule } from "./modules/auth/auth.module";
 import { HealthModule } from "./modules/health/health.module";
 import { LeaveModule } from "./modules/leave/leave.module";
 import { OvertimeModule } from "./modules/overtime/overtime.module";
+import { OnboardingModule } from "./modules/onboarding/onboarding.module";
+import { LearningModule } from "./modules/learning/learning.module";
 import { PayrollModule } from "./modules/payroll/payroll.module";
+import { PerformanceModule } from "./modules/performance/performance.module";
+import { ReportsModule } from "./modules/reports/reports.module";
 import { EmployeeModule } from "./modules/employee/employee.module";
 import { OrganizationModule } from "./modules/organization/organization.module";
 import { PermissionsModule } from "./modules/permissions/permissions.module";
@@ -30,6 +34,10 @@ import { PrismaModule } from "./prisma/prisma.module";
     LeaveModule,
     OvertimeModule,
     PayrollModule,
+    OnboardingModule,
+    PerformanceModule,
+    LearningModule,
+    ReportsModule,
   ],
 })
 export class AppModule {}

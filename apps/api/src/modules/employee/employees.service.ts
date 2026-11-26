@@ -551,7 +551,7 @@ export class EmployeesService {
     if (permissions.has(PERMISSIONS.EMPLOYEE_READ_TEAM)) {
       const scope = await this.resolveScope(user);
       const ids = await this.scopedEmployeeIds(scope);
-      if (ids.includes(row.id)) return false;
+      if (ids.includes(row.id)) return true;
     }
     throw new ForbiddenException({
       code: "EMPLOYEE_OUT_OF_SCOPE",

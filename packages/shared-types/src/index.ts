@@ -171,6 +171,39 @@ export const PERMISSIONS = {
   PAYROLL_PAYSLIPS_DOWNLOAD: "payroll.payslips.download",
   PAYROLL_REPORTS_READ: "payroll.reports.read",
   PAYROLL_HISTORY_READ: "payroll.history.read",
+  ONBOARDING_READ: "onboarding.read",
+  ONBOARDING_MANAGE: "onboarding.manage",
+  ONBOARDING_TASK_UPDATE: "onboarding.task.update",
+  OFFBOARDING_READ: "offboarding.read",
+  OFFBOARDING_MANAGE: "offboarding.manage",
+  OFFBOARDING_TASK_UPDATE: "offboarding.task.update",
+  OFFBOARDING_SENSITIVE_READ: "offboarding.sensitive.read",
+  PERFORMANCE_CYCLES_READ: "performance.cycles.read",
+  PERFORMANCE_CYCLES_MANAGE: "performance.cycles.manage",
+  PERFORMANCE_GOALS_READ_SELF: "performance.goals.read.self",
+  PERFORMANCE_GOALS_MANAGE: "performance.goals.manage",
+  PERFORMANCE_REVIEWS_READ_SELF: "performance.reviews.read.self",
+  PERFORMANCE_REVIEWS_READ_TEAM: "performance.reviews.read.team",
+  PERFORMANCE_REVIEWS_READ_ALL: "performance.reviews.read.all",
+  PERFORMANCE_REVIEWS_SUBMIT_SELF: "performance.reviews.submit.self",
+  PERFORMANCE_REVIEWS_SUBMIT_MANAGER: "performance.reviews.submit.manager",
+  PERFORMANCE_REVIEWS_MANAGE: "performance.reviews.manage",
+  PERFORMANCE_REVIEWS_INTERNAL_NOTES_READ: "performance.reviews.internal-notes.read",
+  LEARNING_PROGRAMS_READ: "learning.programs.read",
+  LEARNING_PROGRAMS_MANAGE: "learning.programs.manage",
+  LEARNING_ENROLLMENT_CREATE: "learning.enrollment.create",
+  LEARNING_ENROLLMENT_READ_SELF: "learning.enrollment.read.self",
+  LEARNING_ENROLLMENT_READ_ALL: "learning.enrollment.read.all",
+  LEARNING_ENROLLMENT_MANAGE: "learning.enrollment.manage",
+  LEARNING_CERTIFICATES_READ_SELF: "learning.certificates.read.self",
+  LEARNING_CERTIFICATES_MANAGE: "learning.certificates.manage",
+  REPORTS_HR_READ: "reports.hr.read",
+  REPORTS_EMPLOYEE_READ: "reports.employee.read",
+  REPORTS_ATTENDANCE_READ: "reports.attendance.read",
+  REPORTS_LEAVE_READ: "reports.leave.read",
+  REPORTS_OVERTIME_READ: "reports.overtime.read",
+  REPORTS_PAYROLL_READ: "reports.payroll.read",
+  REPORTS_EXPORT: "reports.export",
 } as const;
 
 export type PermissionCode = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -1591,4 +1624,412 @@ export interface PayrollRegister {
   pageSize: number;
   total: number;
   totalPages: number;
+}
+
+// ---------------------------------------------------------------------------
+// Phase 8 — Onboarding and offboarding
+// ---------------------------------------------------------------------------
+
+export type OnboardingStatus = "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+export type TaskStatus = "PENDING" | "IN_PROGRESS" | "COMPLETED";
+export type OnboardingTaskCategory =
+  | "DOCUMENTATION"
+  | "HR_ADMINISTRATION"
+  | "IT_SETUP"
+  | "EQUIPMENT"
+  | "ORIENTATION"
+  | "DEPARTMENT_INTRODUCTION"
+  | "OTHER";
+export type OffboardingStatus = "INITIATED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+export type OffboardingReasonCategory =
+  | "RESIGNATION"
+  | "CONTRACT_END"
+  | "TERMINATION"
+  | "RETIREMENT"
+  | "OTHER";
+export type OffboardingTaskCategory =
+  | "HR_ADMINISTRATION"
+  | "DOCUMENTATION"
+  | "KNOWLEDGE_TRANSFER"
+  | "EQUIPMENT_RETURN"
+  | "ACCESS_REVIEW"
+  | "PAYROLL_REVIEW"
+  | "EXIT_INTERVIEW"
+  | "OTHER";
+
+export interface OnboardingTaskTemplate {
+  id: string;
+  title: string;
+  description: string | null;
+  category: OnboardingTaskCategory;
+  assignedRole: string | null;
+  dueOffsetDays: number;
+  isRequired: boolean;
+  sortOrder: number;
+}
+
+export interface OnboardingTemplate {
+  id: string;
+  name: string;
+  description: string | null;
+  isActive: boolean;
+  tasks: OnboardingTaskTemplate[];
+  recordCount?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OnboardingTask {
+  id: string;
+  title: string;
+  description: string | null;
+  category: OnboardingTaskCategory;
+  assignedTo: { id: string; name: string } | null;
+  dueDate: string | null;
+  completedAt: string | null;
+  status: TaskStatus;
+  notes: string | null;
+  isRequired: boolean;
+  sortOrder: number;
+  overdue: boolean;
+}
+
+export interface EmployeeOnboarding {
+  id: string;
+  employee: { id: string; employeeNumber: string; fullName: string; department: string | null };
+  template: { id: string; name: string };
+  startDate: string;
+  expectedCompletionDate: string | null;
+  completedAt: string | null;
+  status: OnboardingStatus;
+  notes: string | null;
+  progress: { total: number; completed: number; overdue: number };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EmployeeOnboardingDetail extends EmployeeOnboarding {
+  tasks: OnboardingTask[];
+}
+
+export interface OffboardingTaskTemplate {
+  id: string;
+  title: string;
+  description: string | null;
+  category: OffboardingTaskCategory;
+  assignedRole: string | null;
+  dueOffsetDays: number;
+  isRequired: boolean;
+  sortOrder: number;
+}
+
+export interface OffboardingTemplate {
+  id: string;
+  name: string;
+  description: string | null;
+  isActive: boolean;
+  tasks: OffboardingTaskTemplate[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OffboardingTask {
+  id: string;
+  title: string;
+  description: string | null;
+  category: OffboardingTaskCategory;
+  assignedTo: { id: string; name: string } | null;
+  dueDate: string | null;
+  completedAt: string | null;
+  status: TaskStatus;
+  notes: string | null;
+  isRequired: boolean;
+  sortOrder: number;
+  overdue: boolean;
+}
+
+export interface EmployeeOffboarding {
+  id: string;
+  employee: { id: string; employeeNumber: string; fullName: string; department: string | null };
+  template: { id: string; name: string } | null;
+  resignationDate: string;
+  lastWorkingDate: string;
+  reasonCategory: OffboardingReasonCategory;
+  reason: string | null;
+  status: OffboardingStatus;
+  completedAt: string | null;
+  progress: { total: number; completed: number; overdue: number };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EmployeeOffboardingDetail extends EmployeeOffboarding {
+  tasks: OffboardingTask[];
+  sensitive: {
+    exitInterviewNotes: string | null;
+    equipmentReturnNotes: string | null;
+    accessReviewNotes: string | null;
+  };
+  integrationNotes: string[];
+}
+
+// ---------------------------------------------------------------------------
+// Phase 8 — Performance
+// ---------------------------------------------------------------------------
+
+export type PerformanceCycleStatus =
+  | "DRAFT"
+  | "ACTIVE"
+  | "REVIEW_IN_PROGRESS"
+  | "COMPLETED"
+  | "CANCELLED";
+export type PerformanceGoalCategory = "BUSINESS" | "LEADERSHIP" | "DEVELOPMENT" | "BEHAVIORAL" | "OTHER";
+export type PerformanceMeasurementType = "NUMERIC" | "PERCENTAGE" | "BOOLEAN" | "QUALITATIVE";
+export type PerformanceGoalStatus = "DRAFT" | "ACTIVE" | "ACHIEVED" | "MISSED" | "CANCELLED";
+export type PerformanceReviewType = "SELF_REVIEW" | "MANAGER_REVIEW" | "HR_REVIEW";
+export type PerformanceReviewStatus = "DRAFT" | "SUBMITTED" | "COMPLETED";
+
+export interface PerformanceCycle {
+  id: string;
+  name: string;
+  description: string | null;
+  startDate: string;
+  endDate: string;
+  reviewStartDate: string;
+  reviewEndDate: string;
+  status: PerformanceCycleStatus;
+  goalCount?: number;
+  reviewCount?: number;
+  completedReviewCount?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PerformanceGoal {
+  id: string;
+  employee: { id: string; employeeNumber: string; fullName: string };
+  cycle: { id: string; name: string; status: PerformanceCycleStatus };
+  title: string;
+  description: string | null;
+  category: PerformanceGoalCategory;
+  measurementType: PerformanceMeasurementType;
+  targetValue: string | null;
+  currentValue: string | null;
+  weight: string;
+  status: PerformanceGoalStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PerformanceGoalDetail extends PerformanceGoal {
+  updates: {
+    id: string;
+    previousValue: string | null;
+    newValue: string | null;
+    comment: string | null;
+    updatedBy: { id: string; name: string } | null;
+    createdAt: string;
+  }[];
+}
+
+export interface PerformanceReviewItem {
+  id: string;
+  goalId: string | null;
+  goalTitle: string | null;
+  rating: string | null;
+  comments: string | null;
+  evidence: string | null;
+}
+
+export interface PerformanceReview {
+  id: string;
+  cycle: { id: string; name: string };
+  employee: { id: string; employeeNumber: string; fullName: string };
+  reviewer: { id: string; name: string } | null;
+  reviewType: PerformanceReviewType;
+  status: PerformanceReviewStatus;
+  overallRating: string | null;
+  summary: string | null;
+  internalNotes?: string | null;
+  submittedAt: string | null;
+  completedAt: string | null;
+  items: PerformanceReviewItem[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ---------------------------------------------------------------------------
+// Phase 8 — Learning
+// ---------------------------------------------------------------------------
+
+export type TrainingType = "INTERNAL" | "EXTERNAL" | "ONLINE" | "WORKSHOP" | "SEMINAR" | "CERTIFICATION" | "OTHER";
+export type TrainingDeliveryMethod = "IN_PERSON" | "ONLINE" | "HYBRID";
+export type TrainingProgramStatus = "DRAFT" | "PUBLISHED" | "ONGOING" | "COMPLETED" | "CANCELLED";
+export type TrainingEnrollmentStatus =
+  | "REQUESTED"
+  | "APPROVED"
+  | "REJECTED"
+  | "ENROLLED"
+  | "IN_PROGRESS"
+  | "COMPLETED"
+  | "CANCELLED"
+  | "FAILED";
+export type TrainingDocumentKind = "MATERIAL" | "CERTIFICATE" | "OTHER";
+
+export interface TrainingProgram {
+  id: string;
+  title: string;
+  description: string | null;
+  category: string | null;
+  trainingType: TrainingType;
+  provider: string | null;
+  durationMinutes: number | null;
+  deliveryMethod: TrainingDeliveryMethod;
+  location: string | null;
+  registrationDeadline: string | null;
+  startDate: string;
+  endDate: string;
+  capacity: number | null;
+  status: TrainingProgramStatus;
+  enrolledCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TrainingDocument {
+  id: string;
+  programId: string;
+  enrollmentId: string | null;
+  employeeId: string | null;
+  kind: TrainingDocumentKind;
+  title: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  issuedAt: string | null;
+  expiresAt: string | null;
+  createdAt: string;
+}
+
+export interface TrainingEnrollment {
+  id: string;
+  program: { id: string; title: string; startDate: string; endDate: string; status: TrainingProgramStatus };
+  employee: { id: string; employeeNumber: string; fullName: string };
+  status: TrainingEnrollmentStatus;
+  enrolledAt: string | null;
+  approvedBy: { id: string; name: string } | null;
+  completedAt: string | null;
+  result: string | null;
+  feedback: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TrainingProgramDetail extends TrainingProgram {
+  enrollments: TrainingEnrollment[];
+  documents: TrainingDocument[];
+}
+
+// ---------------------------------------------------------------------------
+// Phase 8 — Advanced reports
+// ---------------------------------------------------------------------------
+
+export interface HrDashboard {
+  headcount: { total: number; active: number; probation: number; inactive: number; resigned: number };
+  newHires: number;
+  resignations: number;
+  pendingLeave: number;
+  onboardingInProgress: number;
+  offboardingInProgress: number;
+  reviewsPending: number;
+  trainingParticipants: number;
+  payrollNetThisMonth: string;
+  byDepartment: { department: string; count: number }[];
+  byStatus: { status: string; count: number }[];
+}
+
+export interface EmployeeReport {
+  total: number;
+  rows: {
+    id: string;
+    employeeNumber: string;
+    fullName: string;
+    department: string | null;
+    position: string | null;
+    status: string;
+    joinDate: string;
+  }[];
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export interface AttendanceLeaveReport {
+  attendance: { present: number; late: number; absent: number; incomplete: number };
+  leave: { approvedDays: string; pendingRequests: number; utilization: { leaveType: string; days: string }[] };
+}
+
+export interface OvertimePayrollReport {
+  overtime: { verifiedMinutes: number; employees: number; byDepartment: { department: string; minutes: number }[] };
+  payroll: { publishedRuns: number; grossTotal: string; deductionTotal: string; netTotal: string; byDepartment: { department: string; netTotal: string }[] };
+}
+
+export interface CompletionReport {
+  onboarding: { total: number; completed: number; inProgress: number; overdueTasks: number };
+  offboarding: { total: number; completed: number; inProgress: number; overdueTasks: number };
+  performance: { cycles: number; reviews: number; submitted: number; completed: number };
+  learning: { programs: number; enrollments: number; completed: number; certificates: number };
+}
+
+export interface OnboardingReport {
+  total: number;
+  completed: number;
+  inProgress: number;
+  notStarted: number;
+  cancelled: number;
+  overdueTasks: number;
+  byTemplate: { template: string; total: number; completed: number }[];
+}
+
+export interface OffboardingReport {
+  total: number;
+  completed: number;
+  inProgress: number;
+  initiated: number;
+  cancelled: number;
+  overdueTasks: number;
+  byReason: { reason: string; count: number }[];
+}
+
+export interface PerformanceReport {
+  cycles: number;
+  reviews: number;
+  submitted: number;
+  completed: number;
+  completionRate: number;
+  byCycle: {
+    cycle: string;
+    status: PerformanceCycleStatus;
+    reviews: number;
+    completed: number;
+  }[];
+}
+
+export interface LearningReport {
+  programs: number;
+  enrollments: number;
+  completed: number;
+  certificates: number;
+  completionRate: number;
+  byProgram: {
+    program: string;
+    enrollments: number;
+    completed: number;
+  }[];
+}
+
+export interface CsvExport {
+  fileName: string;
+  content: string;
+  mimeType: string;
 }
